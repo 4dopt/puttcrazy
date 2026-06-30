@@ -1,0 +1,6 @@
+{
+  "name": "Putt Crazy & Playgolf Kids Parties",
+  "description": "An interactive kids party brochure, pricing calculator, catering menu selector, and birthday slot availability checker for Putt Crazy & Playgolf Northwick Park.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
