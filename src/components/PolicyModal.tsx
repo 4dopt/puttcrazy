@@ -326,7 +326,7 @@ export default function PolicyModal({ isOpen, onClose, initialTab }: PolicyModal
                           <span className="font-black uppercase tracking-wider text-slate-950 block">Our Location</span>
                           <p className="text-slate-500 font-semibold mt-1 leading-relaxed">
                             Playgolf Northwick Park<br/>
-                            Watford Rd, Harrow<br/>
+                            280 Watford Rd, Harrow<br/>
                             London, HA1 3GG
                           </p>
                         </div>
@@ -449,7 +449,7 @@ export default function PolicyModal({ isOpen, onClose, initialTab }: PolicyModal
                           <div className="absolute inset-0 bg-emerald-50 flex flex-col items-center justify-center p-4 text-center">
                             <span className="text-xl font-bold">⛳</span>
                             <span className="text-[10px] font-black text-slate-950 uppercase tracking-tight mt-1">Playgolf Northwick Park Map</span>
-                            <span className="text-[9px] text-slate-500 font-semibold font-mono mt-0.5">Watford Rd, Harrow, HA1 3GG</span>
+                            <span className="text-[9px] text-slate-500 font-semibold font-mono mt-0.5">280 Watford Rd, Harrow, HA1 3GG</span>
                           </div>
                         </div>
                       </div>

@@ -90,6 +90,15 @@ export const FOOD_MAINS: FoodOption[] = [
     isAllergenFriendly: true,
     allergens: ['Fish', 'Gluten'],
     emoji: '🐟'
+  },
+  {
+    id: 'main-veggie-nuggets',
+    name: 'Veggie nuggets with chips',
+    type: 'main',
+    description: 'Plant-based nuggets with a crispy coating served with hot skinny chips.',
+    isAllergenFriendly: true,
+    allergens: ['Gluten'],
+    emoji: '🥕'
   }
 ];
 
@@ -130,17 +139,18 @@ export function getMockAvailability(): DayAvailability[] {
     const isWeekend = targetDate.getDay() === 0 || targetDate.getDay() === 6;
     
     // Setup time slots from 12:00 PM to 09:00 PM
+    // Max 3 parties per slot
     const slots: BirthdaySlot[] = [
       { id: `${i}-12`, time: '12:00 PM', status: i % 4 === 1 ? 'booked' : 'available', spotsLeft: i % 4 === 1 ? 0 : 3, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-13`, time: '01:00 PM', status: 'available', spotsLeft: 4, dayType: isWeekend ? 'weekend' : 'weekday' },
+      { id: `${i}-13`, time: '01:00 PM', status: 'available', spotsLeft: 3, dayType: isWeekend ? 'weekend' : 'weekday' },
       { id: `${i}-14`, time: '02:00 PM', status: isWeekend && i % 2 === 0 ? 'booked' : 'filling-fast', spotsLeft: isWeekend && i % 2 === 0 ? 0 : 1, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-15`, time: '03:00 PM', status: 'available', spotsLeft: 4, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-16`, time: '04:00 PM', status: i % 5 === 0 ? 'booked' : 'available', spotsLeft: i % 5 === 0 ? 0 : 4, dayType: isWeekend ? 'weekend' : 'weekday' },
+      { id: `${i}-15`, time: '03:00 PM', status: 'available', spotsLeft: 3, dayType: isWeekend ? 'weekend' : 'weekday' },
+      { id: `${i}-16`, time: '04:00 PM', status: i % 5 === 0 ? 'booked' : 'available', spotsLeft: i % 5 === 0 ? 0 : 3, dayType: isWeekend ? 'weekend' : 'weekday' },
       { id: `${i}-17`, time: '05:00 PM', status: 'available', spotsLeft: 3, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-18`, time: '06:00 PM', status: 'available', spotsLeft: 3, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-19`, time: '07:00 PM', status: isWeekend ? 'filling-fast' : 'available', spotsLeft: 2, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-20`, time: '08:00 PM', status: 'available', spotsLeft: 4, dayType: isWeekend ? 'weekend' : 'weekday' },
-      { id: `${i}-21`, time: '09:00 PM', status: 'available', spotsLeft: 4, dayType: isWeekend ? 'weekend' : 'weekday' }
+      { id: `${i}-18`, time: '06:00 PM', status: 'available', spotsLeft: 2, dayType: isWeekend ? 'weekend' : 'weekday' },
+      { id: `${i}-19`, time: '07:00 PM', status: isWeekend ? 'filling-fast' : 'available', spotsLeft: 1, dayType: isWeekend ? 'weekend' : 'weekday' },
+      { id: `${i}-20`, time: '08:00 PM', status: 'available', spotsLeft: 3, dayType: isWeekend ? 'weekend' : 'weekday' },
+      { id: `${i}-21`, time: '09:00 PM', status: 'available', spotsLeft: 3, dayType: isWeekend ? 'weekend' : 'weekday' }
     ];
     
     days.push({

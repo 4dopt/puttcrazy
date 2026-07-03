@@ -103,7 +103,7 @@ export default function BookingFooter({ onOpenPolicy }: BookingFooterProps) {
 
         {/* Copyright and address details */}
         <div className="text-[11px] text-slate-500 space-y-1 font-medium">
-          <p>playgolf Northwick Park &bull; Watford Rd, Harrow HA1 3GG</p>
+          <p>playgolf Northwick Park &bull; 280 Watford Rd, Harrow HA1 3GG</p>
           <p>&copy; {new Date().getFullYear()} playgolf Northwick Park. All rights reserved. Putt Crazy Adventure Golf is a registered trademark.</p>
         </div>
 

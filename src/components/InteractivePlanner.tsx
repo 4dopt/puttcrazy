@@ -1,4 +1,4 @@
-import { useState, useMemo, FormEvent } from 'react';
+import { useState, useMemo, FormEvent, useEffect } from 'react';
 import { PARTY_PACKAGES, FOOD_MAINS, FOOD_DRINKS, FOOD_EXTRAS, getMockAvailability } from '../data';
 import { CalculatorState, BirthdaySlot } from '../types';
 import { Calendar, Clock, Users, Coffee, Mail, CheckCircle, AlertCircle, ShoppingBag, Receipt, FileText, ChevronRight, Sparkles } from 'lucide-react';
@@ -12,6 +12,20 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
   // Available dates list
   const availability = useMemo(() => getMockAvailability(), []);
   
+  // Track locally sent bookings to simulate slot reservation
+  const [localBookings, setLocalBookings] = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('party_bookings');
+    if (saved) {
+      try {
+        setLocalBookings(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse local bookings', e);
+      }
+    }
+  }, []);
+
   // Local form/calculator state
   const [state, setState] = useState<CalculatorState>({
     selectedPackageId: initialPackageId,
@@ -74,8 +88,23 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
   // Get active slots for the selected date
   const availableSlotsForSelectedDate = useMemo(() => {
     const targetDay = availability.find(d => d.date === state.partyDate);
-    return targetDay ? targetDay.slots : [];
-  }, [state.partyDate, availability]);
+    if (!targetDay) return [];
+
+    return targetDay.slots.map(slot => {
+      // Check if this slot was booked locally
+      const isLocallyBooked = localBookings.includes(`${targetDay.date}-${slot.time}`);
+      if (isLocallyBooked) {
+        return { ...slot, status: 'booked' as const, spotsLeft: 0 };
+      }
+      
+      // If spots are already 0 in mock data, it's booked
+      if (slot.spotsLeft <= 0) {
+        return { ...slot, status: 'booked' as const };
+      }
+
+      return slot;
+    });
+  }, [state.partyDate, availability, localBookings]);
 
   // Calculations
   const calculations = useMemo(() => {
@@ -156,6 +185,17 @@ ${state.parentName || 'Parent / Guardian'}`
 
   const triggerMockBooking = (e: FormEvent) => {
     e.preventDefault();
+    if (!state.partyDate || !state.partyTime) {
+      alert("Please select a date and time for the party.");
+      return;
+    }
+    
+    // Save booking locally to simulate persistence
+    const bookingKey = `${state.partyDate}-${state.partyTime}`;
+    const newBookings = [...localBookings, bookingKey];
+    setLocalBookings(newBookings);
+    localStorage.setItem('party_bookings', JSON.stringify(newBookings));
+    
     setBookingSuccess(true);
     // Open the email client draft
     window.location.href = emailDraft;
