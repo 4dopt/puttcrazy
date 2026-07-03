@@ -41,7 +41,10 @@ export default function App() {
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = 'kidspartybrochure';
     window.print();
+    document.title = originalTitle;
   };
 
   return (

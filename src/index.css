@@ -21,6 +21,11 @@
 
 /* Print Stylesheet for PDF Conversion */
 @media print {
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+
   body {
     background-color: white !important;
     color: black !important;
