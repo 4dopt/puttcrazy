@@ -5,7 +5,7 @@ import InteractivePlanner from './components/InteractivePlanner';
 import BookingFooter from './components/BookingFooter';
 import PrintPDFLayout from './components/PrintPDFLayout';
 import PolicyModal, { PolicyType } from './components/PolicyModal';
-import { Target, Flag, CalendarRange, Utensils, X, ExternalLink, Download, CheckCircle2 } from 'lucide-react';
+import { Target, Flag, CalendarRange, Utensils, X, ExternalLink, Download, CheckCircle2, Printer, Image, FileText } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -163,6 +163,7 @@ export default function App() {
   const [initialPolicyTab, setInitialPolicyTab] = useState<PolicyType>('privacy');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [brochureImgUrl, setBrochureImgUrl] = useState<string | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   const handleOpenPolicy = (type: PolicyType) => {
@@ -283,6 +284,7 @@ export default function App() {
       });
 
       const imgData = canvas.toDataURL('image/png');
+      setBrochureImgUrl(imgData);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -450,79 +452,149 @@ export default function App() {
         initialTab={initialPolicyTab} 
       />
 
-      {/* PDF Ready / Fallback Download Modal for High Compatibility */}
+      {/* PDF Ready & Mobile Save Options Hub Modal */}
       {isPdfModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto no-print flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-2xl border-4 border-slate-950 p-6 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] animate-fade-in">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl border-4 border-slate-950 p-6 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] animate-fade-in my-8">
             {/* Close Button */}
             <button 
               onClick={() => setIsPdfModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-950 transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-950 transition-colors bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full border border-slate-300"
               aria-label="Close dialog"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center text-emerald-600">
-                <CheckCircle2 className="w-8 h-8" />
+            <div className="flex flex-col space-y-5">
+              <div className="flex items-center gap-3 border-b-2 border-slate-100 pb-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center text-emerald-600 shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black font-display text-slate-950 uppercase tracking-tight leading-none">
+                    Brochure Generated!
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-1">
+                    Select Your Saved Method Below
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-xl font-black font-display text-slate-950 uppercase tracking-tight">
-                  PDF Brochure Ready!
-                </h3>
-                <p className="text-xs text-slate-500 font-medium font-mono uppercase">
-                  Playgolf Kids Party Packages
-                </p>
-              </div>
-
-              <p className="text-slate-600 text-xs md:text-sm leading-relaxed font-medium">
-                Your high-fidelity printable party brochure has been compiled successfully. If the file did not download automatically, please use the button below to view or save it.
+              <p className="text-slate-600 text-xs leading-relaxed font-medium">
+                To guarantee compatibility on mobile devices, tablets, and in-app browsers, choose the save method that works best for your device:
               </p>
 
-              {/* Action Buttons */}
-              <div className="w-full space-y-2 pt-2">
+              {/* Option List */}
+              <div className="space-y-3.5">
+                
+                {/* Method 1: System Print / Native Save as PDF */}
+                <div className="p-3.5 bg-emerald-50/50 border-2 border-emerald-500/30 rounded-xl flex items-start gap-3 hover:bg-emerald-50 transition-colors">
+                  <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 shrink-0">
+                    <Printer className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
+                      Method 1: Native System Print (Recommended for iOS/Android)
+                    </h4>
+                    <p className="text-[11px] text-slate-600 leading-normal">
+                      Triggers the standard device print dialog. You can select <span className="font-bold">"Save to PDF"</span> or send it to your home printer instantly.
+                    </p>
+                    <button
+                      onClick={() => {
+                        window.print();
+                      }}
+                      className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]"
+                    >
+                      <Printer className="w-3 h-3" />
+                      Open System Print Dialog
+                    </button>
+                  </div>
+                </div>
+
+                {/* Method 2: Direct PDF File */}
                 {pdfBlobUrl && (
-                  <a
-                    href={pdfBlobUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:scale-102 transition-all"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>View / Save PDF (New Tab)</span>
-                  </a>
+                  <div className="p-3.5 bg-amber-50/50 border-2 border-amber-500/30 rounded-xl flex items-start gap-3 hover:bg-amber-50 transition-colors">
+                    <div className="p-2 bg-amber-100 text-amber-700 rounded-lg border border-amber-200 shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
+                        Method 2: PDF File Download
+                      </h4>
+                      <p className="text-[11px] text-slate-600 leading-normal">
+                        Launches a standard PDF download or opens the file in a new tab.
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <a
+                          href={pdfBlobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          View PDF in New Tab
+                        </a>
+                        <a
+                          href={pdfBlobUrl}
+                          download="playgolf-kids-party-brochure.pdf"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.15)]"
+                        >
+                          <Download className="w-3 h-3" />
+                          Force PDF Download
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
-                {pdfBlobUrl && (
-                  <a
-                    href={pdfBlobUrl}
-                    download="playgolf-kids-party-brochure.pdf"
-                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-950 font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)]"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download File Directly</span>
-                  </a>
+                {/* Method 3: Long-press image */}
+                {brochureImgUrl && (
+                  <div className="p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-slate-200 text-slate-700 rounded-lg border border-slate-300 shrink-0">
+                        <Image className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
+                          Method 3: Save as Image (100% Mobile Bulletproof)
+                        </h4>
+                        <p className="text-[11px] text-slate-600 leading-normal">
+                          For instant saving, tap & hold (long press) the compiled image preview below to save it directly to your device's Camera Roll / Photos app.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="relative border-2 border-slate-950 rounded-lg overflow-hidden bg-slate-100 p-2 group">
+                      <img 
+                        src={brochureImgUrl} 
+                        alt="Compiled Playgolf Kids Brochure" 
+                        className="max-h-56 w-full object-contain mx-auto rounded bg-white shadow-xs"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-slate-950/80 text-white text-[9px] font-mono text-center py-1 select-none pointer-events-none">
+                        👇 LONG-TAP ABOVE TO SAVE TO PHOTOS
+                      </div>
+                    </div>
+
+                    <a
+                      href={brochureImgUrl}
+                      download="playgolf-kids-party-brochure.png"
+                      className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-slate-950 hover:bg-slate-900 text-white font-display font-black text-[10px] uppercase tracking-wider rounded-lg border-2 border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)]"
+                    >
+                      <Download className="w-3 h-3" />
+                      Download Brochure as PNG Image
+                    </a>
+                  </div>
                 )}
 
-                <button
-                  onClick={() => setIsPdfModalOpen(false)}
-                  className="w-full px-5 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider"
-                >
-                  Dismiss
-                </button>
               </div>
 
-              {/* Tips */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-left w-full">
-                <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider mb-1">
-                  💡 Mobile Devices Tip:
-                </p>
-                <p className="text-[10px] text-slate-500 font-medium leading-normal">
-                  Tap <span className="font-bold">"View / Save PDF"</span>. Once the PDF loads in your browser tab, use your browser's <span className="font-bold">Share</span> button and choose <span className="font-bold">"Save to Files"</span>, <span className="font-bold">"Print"</span>, or copy/share via messaging.
-                </p>
-              </div>
+              {/* Close footer */}
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-slate-200"
+              >
+                Close Saving Hub
+              </button>
             </div>
           </div>
         </div>
