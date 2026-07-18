@@ -46,6 +46,37 @@ function oklchToRgb(l: number, c: number, h: number, a: number = 1): string {
   }
 }
 
+function oklabToRgb(l: number, a_lab: number, b_lab: number, a: number = 1): string {
+  const l_lms = l + 0.3963377774 * a_lab + 0.2158037573 * b_lab;
+  const m_lms = l - 0.1055613458 * a_lab - 0.0638541728 * b_lab;
+  const s_lms = l - 0.0894841775 * a_lab - 1.291485548 * b_lab;
+
+  const l_cube = Math.pow(Math.max(0, l_lms), 3);
+  const m_cube = Math.pow(Math.max(0, m_lms), 3);
+  const s_cube = Math.pow(Math.max(0, s_lms), 3);
+
+  const r_lin = +4.0767416621 * l_cube - 3.3077115913 * m_cube + 0.2309699292 * s_cube;
+  const g_lin = -1.2684380046 * l_cube + 2.6097574011 * m_cube - 0.3413193965 * s_cube;
+  const b_lin = -0.0041960863 * l_cube - 0.7034186147 * m_cube + 1.707614701 * s_cube;
+
+  const toSrgb = (val: number): number => {
+    const clamped = Math.max(0, Math.min(1, val));
+    return clamped <= 0.0031308
+      ? clamped * 12.92
+      : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+  };
+
+  const r = Math.round(toSrgb(r_lin) * 255);
+  const g = Math.round(toSrgb(g_lin) * 255);
+  const b = Math.round(toSrgb(b_lin) * 255);
+
+  if (a === 1) {
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+}
+
 function replaceOklchInCss(cssText: string): string {
   return cssText.replace(/oklch\s*\(([^)]+)\)/gi, (match, content) => {
     try {
@@ -79,6 +110,47 @@ function replaceOklchInCss(cssText: string): string {
       return oklchToRgb(l, c, h, a);
     } catch (e) {
       console.warn('Failed to parse oklch content:', content, e);
+      return match;
+    }
+  });
+}
+
+function replaceOklabInCss(cssText: string): string {
+  return cssText.replace(/oklab\s*\(([^)]+)\)/gi, (match, content) => {
+    try {
+      const parts = content.trim().split(/[\s,/]+/);
+      if (parts.length < 3) return match;
+
+      const lStr = parts[0];
+      let l = parseFloat(lStr);
+      if (lStr.includes('%')) {
+        l = l / 100;
+      }
+
+      const aStr = parts[1];
+      let aVal = parseFloat(aStr);
+      if (aStr.includes('%')) {
+        aVal = (aVal / 100) * 0.4;
+      }
+
+      const bStr = parts[2];
+      let bVal = parseFloat(bStr);
+      if (bStr.includes('%')) {
+        bVal = (bVal / 100) * 0.4;
+      }
+
+      let alpha = 1;
+      if (parts.length >= 4) {
+        const aStr = parts[3];
+        alpha = parseFloat(aStr);
+        if (aStr.includes('%')) {
+          alpha = alpha / 100;
+        }
+      }
+
+      return oklabToRgb(l, aVal, bVal, alpha);
+    } catch (e) {
+      console.warn('Failed to parse oklab content:', content, e);
       return match;
     }
   });
@@ -155,8 +227,10 @@ export default function App() {
             }
           }
 
-          if (cssText.toLowerCase().includes('oklch')) {
-            const convertedCss = replaceOklchInCss(cssText);
+          const lowerCss = cssText.toLowerCase();
+          if (lowerCss.includes('oklch') || lowerCss.includes('oklab')) {
+            let convertedCss = replaceOklchInCss(cssText);
+            convertedCss = replaceOklabInCss(convertedCss);
             
             const tempStyle = document.createElement('style');
             tempStyle.setAttribute('data-temp-sanitized', 'true');
