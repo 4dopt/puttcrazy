@@ -197,7 +197,7 @@ export default function App() {
     document.body.classList.add('rendering-pdf');
 
     const tempStyleElements: HTMLStyleElement[] = [];
-    const disabledStyleElements: (HTMLStyleElement | HTMLLinkElement)[] = [];
+    const detachedElements: { element: Element; parent: ParentNode; nextSibling: Node | null }[] = [];
 
     try {
       const element = document.querySelector('.print-container') as HTMLElement;
@@ -205,13 +205,20 @@ export default function App() {
         throw new Error('Print layout container not found');
       }
 
-      // Convert OKLCH to RGB in all loaded stylesheets temporarily so html2canvas doesn't crash on OKLCH
+      // Convert OKLCH and OKLAB to RGB/RGBA in all loaded stylesheets temporarily so html2canvas doesn't crash on OKLCH
       const styleElements = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'));
       for (const el of styleElements) {
+        if (el.hasAttribute('data-temp-sanitized')) {
+          continue;
+        }
+
         try {
           let cssText = '';
+          let isAccessible = false;
+
           if (el.tagName === 'STYLE') {
             cssText = el.textContent || '';
+            isAccessible = true;
           } else if (el.tagName === 'LINK') {
             const link = el as HTMLLinkElement;
             const sheet = link.sheet as CSSStyleSheet;
@@ -220,15 +227,16 @@ export default function App() {
                 cssText = Array.from(sheet.cssRules)
                   .map(rule => rule.cssText)
                   .join('\n');
+                isAccessible = true;
               } catch (e) {
-                // Ignore CORS sheets or sheets with restricted rules
-                continue;
+                // Ignore CORS sheets or sheets with restricted rules (e.g. cross-origin CDNs)
+                isAccessible = false;
               }
             }
           }
 
-          const lowerCss = cssText.toLowerCase();
-          if (lowerCss.includes('oklch') || lowerCss.includes('oklab')) {
+          // If stylesheet is accessible, we sanitize it and inject a converted version
+          if (isAccessible && cssText) {
             let convertedCss = replaceOklchInCss(cssText);
             convertedCss = replaceOklabInCss(convertedCss);
             
@@ -237,14 +245,21 @@ export default function App() {
             tempStyle.textContent = convertedCss;
             document.head.appendChild(tempStyle);
             tempStyleElements.push(tempStyle);
+          }
 
-            if (el instanceof HTMLStyleElement || el instanceof HTMLLinkElement) {
-              el.disabled = true;
-              disabledStyleElements.push(el);
-            }
+          // Always detach the original element from the DOM (whether accessible or not)
+          // so html2canvas doesn't find or try to fetch/parse the unsanitized original stylesheet.
+          const parent = el.parentNode;
+          if (parent) {
+            detachedElements.push({
+              element: el,
+              parent,
+              nextSibling: el.nextSibling,
+            });
+            parent.removeChild(el);
           }
         } catch (err) {
-          console.error('Error sanitizing stylesheet:', err);
+          console.error('Error handling style element:', err);
         }
       }
 
@@ -298,8 +313,20 @@ export default function App() {
           tempStyle.parentNode.removeChild(tempStyle);
         }
       }
-      for (const el of disabledStyleElements) {
-        el.disabled = false;
+      
+      // Restore original stylesheets to their exact previous spots in reverse order
+      for (let i = detachedElements.length - 1; i >= 0; i--) {
+        const { element, parent, nextSibling } = detachedElements[i];
+        try {
+          if (nextSibling && nextSibling.parentNode === parent) {
+            parent.insertBefore(element, nextSibling);
+          } else {
+            parent.appendChild(element);
+          }
+        } catch (err) {
+          console.error('Error restoring style element:', err);
+          document.head.appendChild(element);
+        }
       }
 
       document.body.classList.remove('rendering-pdf');
