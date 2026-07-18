@@ -32,7 +32,7 @@ export default function PrintPDFLayout() {
             </p>
             <ul className="text-xs space-y-1.5 list-disc pl-4 text-slate-800 font-medium">
               <li>1 Hour of Golf with unlimited balls on the Driving Range.</li>
-              <li>1 Meal per Kid (1 Main Dish & 1 Soft Drink).</li>
+              <li>1 Meal per Kid (1 Main Dish & 1 Glass of Squash).</li>
               <li>Safety induction & youth golf clubs provided.</li>
             </ul>
           </div>
@@ -50,7 +50,7 @@ export default function PrintPDFLayout() {
             </p>
             <ul className="text-xs space-y-1.5 list-disc pl-4 text-slate-800 font-medium">
               <li>1 Round of 18holes mini golf course.</li>
-              <li>1 Meal per Kid (1 Main Dish & 1 Soft Drink).</li>
+              <li>1 Meal per Kid (1 Main Dish & 1 Glass of Squash).</li>
               <li>Aesthetic neon putters, colorful golf balls & cards provided.</li>
             </ul>
           </div>
@@ -99,7 +99,7 @@ export default function PrintPDFLayout() {
             </ul>
           </div>
           <div>
-            <h4 className="text-xs font-bold text-emerald-800 mb-1.5">Choice of Soft Drink:</h4>
+            <h4 className="text-xs font-bold text-emerald-800 mb-1.5">Choice of Squash:</h4>
             <ul className="text-xs space-y-1 list-none pl-0 text-slate-800 font-medium">
               {FOOD_DRINKS.map(drink => (
                 <li key={drink.id} className="flex items-start gap-1">

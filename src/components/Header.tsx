@@ -5,9 +5,10 @@ interface HeaderProps {
   activeTab: 'brochure' | 'planner';
   setActiveTab: (tab: 'brochure' | 'planner') => void;
   onPrint: () => void;
+  isGeneratingPDF?: boolean;
 }
 
-export default function Header({ activeTab, setActiveTab, onPrint }: HeaderProps) {
+export default function Header({ activeTab, setActiveTab, onPrint, isGeneratingPDF = false }: HeaderProps) {
   return (
     <header className="relative bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-800 text-white py-12 px-6 md:px-12 border-b-8 border-yellow-400 no-print">
       {/* Decorative clean geometric grid pattern */}
@@ -72,9 +73,16 @@ export default function Header({ activeTab, setActiveTab, onPrint }: HeaderProps
           <button
             id="btn-print-brochure"
             onClick={onPrint}
-            className="w-full px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border-2 border-slate-950 font-display font-black text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(250,204,21,1)]"
+            disabled={isGeneratingPDF}
+            className="w-full px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 disabled:cursor-not-allowed text-white border-2 border-slate-950 font-display font-black text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(250,204,21,1)]"
           >
-            🖨️ PDF / Print Brochure
+            {isGeneratingPDF ? (
+              <>
+                <span className="animate-spin inline-block mr-1">🌀</span> Downloading...
+              </>
+            ) : (
+              <>🖨️ PDF / Print Brochure</>
+            )}
           </button>
         </div>
 

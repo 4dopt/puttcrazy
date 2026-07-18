@@ -497,7 +497,7 @@ ${state.parentName || 'Parent / Guardian'}`
               <div className="space-y-1">
                 <span className="text-xs font-extrabold text-slate-950 block uppercase tracking-tight">Catering Details</span>
                 <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                  Your package guarantees <strong>1 freshly prepped hot main dish and 1 refreshing chilled soft drink</strong> for every child. You do not need to lock in precise menu quantities today—simply indicate custom allergen requests or gluten-free requirements below. Our booking team will help finalize your menu details 3 days before the party.
+                  Your package guarantees <strong>1 freshly prepped hot main dish and 1 refreshing glass of squash</strong> for every child. You do not need to lock in precise menu quantities today—simply indicate custom allergen requests or gluten-free requirements below. Our booking team will help finalize your menu details 3 days before the party.
                 </p>
               </div>
             </div>

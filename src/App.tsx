@@ -6,12 +6,15 @@ import BookingFooter from './components/BookingFooter';
 import PrintPDFLayout from './components/PrintPDFLayout';
 import PolicyModal, { PolicyType } from './components/PolicyModal';
 import { Target, Flag, CircleDollarSign, CalendarRange, Utensils, HelpCircle } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'brochure' | 'planner'>('brochure');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('driving-range');
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [initialPolicyTab, setInitialPolicyTab] = useState<PolicyType>('privacy');
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const handleOpenPolicy = (type: PolicyType) => {
     setInitialPolicyTab(type);
@@ -40,12 +43,67 @@ export default function App() {
     }, 100);
   };
 
-  const handlePrint = () => {
-    const originalTitle = document.title;
-    document.title = 'kidspartybrochure';
-    window.print();
-    document.title = originalTitle;
+  const handleDownloadPDF = async () => {
+    if (isGeneratingPDF) return;
+    setIsGeneratingPDF(true);
+    // Add the rendering-pdf class to body to make PrintPDFLayout active but hidden off-screen
+    document.body.classList.add('rendering-pdf');
+
+    try {
+      const element = document.querySelector('.print-container') as HTMLElement;
+      if (!element) {
+        throw new Error('Print layout container not found');
+      }
+
+      // Allow a brief delay for any layout layout recalculation
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgWidth = 210; // A4 size width in mm
+      const pageHeight = 297; // A4 size height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // If content overflows A4 height, add extra pages
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save('playgolf-kids-party-brochure.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // Fallback to window print
+      const originalTitle = document.title;
+      document.title = 'kidspartybrochure';
+      window.print();
+      document.title = originalTitle;
+    } finally {
+      document.body.classList.remove('rendering-pdf');
+      setIsGeneratingPDF(false);
+    }
   };
+
 
   return (
     <div className="min-h-screen bg-[#fbfcfb] text-slate-800 font-sans selection:bg-emerald-100 selection:text-emerald-950 antialiased">
@@ -60,7 +118,8 @@ export default function App() {
         <Header 
           activeTab={activeTab} 
           setActiveTab={handleTabChange} 
-          onPrint={handlePrint}
+          onPrint={handleDownloadPDF}
+          isGeneratingPDF={isGeneratingPDF}
         />
 
         {/* Feature quick-links bar */}

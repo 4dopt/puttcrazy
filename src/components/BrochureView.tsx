@@ -210,7 +210,7 @@ export default function BrochureView({ onSelectPackage }: BrochureViewProps) {
                 KIDS PARTY MENU: Food & Drinks Options
               </h3>
               <p className="text-slate-600 text-xs font-medium">
-                Every customized menu package includes 1 freshly made hot main dish and 1 chilled soft drink per child guest!
+                Every customized menu package includes 1 freshly made hot main dish and 1 glass of squash per child guest!
               </p>
             </div>
             <span className="text-xs font-black text-slate-900 bg-yellow-400 border-2 border-slate-950 px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] self-start md:self-auto">

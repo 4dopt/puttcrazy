@@ -12,11 +12,11 @@ export const PARTY_PACKAGES: PartyPackage[] = [
       '1 Hour of Golf on the professional Driving Range',
       'Unlimited range balls during play',
       'Interactive visual trackers (where available)',
-      '1 Meal per Kid (1 Main Dish & 1 Soft Drink)',
+      '1 Meal per Kid (1 Main Dish & 1 Glass of Squash)',
       'Dedicated bays and safety introduction'
     ],
     description: 'Perfect for active kids who want to feel like golfing pros! Unlimited balls and high-energy swing fun under the supervision of parents/guardians.',
-    cateringDetails: 'Includes 1 freshly made hot main dish and 1 chilled soft drink per kid.'
+    cateringDetails: 'Includes 1 freshly made hot main dish and 1 glass of squash per kid.'
   },
   {
     id: 'adventure-golf',
@@ -29,11 +29,11 @@ export const PARTY_PACKAGES: PartyPackage[] = [
       '1 full Round of 18-holes Putt Crazy Adventure Golf',
       'Adventure scorecards, child-sized putters and colored balls',
       'Crazy loops, custom tunnels, and fun neon challenges',
-      '1 Meal per Kid (1 Main Dish & 1 Soft Drink)',
+      '1 Meal per Kid (1 Main Dish & 1 Glass of Squash)',
       'Self-guided fun across the spectacular mini golf course'
     ],
     description: 'An immersive putting experience with winding pathways, wild obstacles, and friendly competition on our famous Putt Crazy course.',
-    cateringDetails: 'Includes 1 freshly made hot main dish and 1 chilled soft drink per kid.'
+    cateringDetails: 'Includes 1 freshly made hot main dish and 1 glass of squash per kid.'
   },
   {
     id: 'combo-party',
@@ -46,15 +46,24 @@ export const PARTY_PACKAGES: PartyPackage[] = [
       '1 Hour of Golf with unlimited balls on the Driving Range',
       '1 full Round of 18-holes Putt Crazy Adventure Golf',
       'A massive £11.50 saving compared to separate standard entry!',
-      '1 Meal per Kid (1 Main Dish & 1 Soft Drink)',
+      '1 Meal per Kid (1 Main Dish & 1 Glass of Squash)',
       'All equipment provided (clubs, putters, and balls)'
     ],
     description: 'The ultimate kids party experience at Northwick Park! Enjoy both premium attractions for an unbeatable deal of just £5 extra per child.',
-    cateringDetails: 'Includes 1 freshly made hot main dish and 1 chilled soft drink per kid, served at your reserved party table.'
+    cateringDetails: 'Includes 1 freshly made hot main dish and 1 glass of squash per kid, served at your reserved party table.'
   }
 ];
 
 export const FOOD_MAINS: FoodOption[] = [
+  {
+    id: 'main-margherita-pizza',
+    name: 'Margherita pizza with 2 toppings',
+    type: 'main',
+    description: 'Classic stone-baked cheese and tomato pizza with your choice of two toppings.',
+    isAllergenFriendly: false,
+    allergens: ['Gluten', 'Dairy'],
+    emoji: '🍕'
+  },
   {
     id: 'main-pasta-tomato',
     name: 'Pasta in Tomato sauce',
@@ -105,14 +114,14 @@ export const FOOD_MAINS: FoodOption[] = [
 export const FOOD_DRINKS: FoodOption[] = [
   {
     id: 'drink-blackcurrant-jug',
-    name: 'Black currant squash Jug',
+    name: 'Black currant squash',
     type: 'drink',
     isAllergenFriendly: true,
     emoji: '🍇'
   },
   {
     id: 'drink-orange-jug',
-    name: 'Orange squash jug',
+    name: 'Orange squash',
     type: 'drink',
     isAllergenFriendly: true,
     emoji: '🍊'
