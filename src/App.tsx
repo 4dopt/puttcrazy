@@ -5,7 +5,7 @@ import InteractivePlanner from './components/InteractivePlanner';
 import BookingFooter from './components/BookingFooter';
 import PrintPDFLayout from './components/PrintPDFLayout';
 import PolicyModal, { PolicyType } from './components/PolicyModal';
-import { Target, Flag, CalendarRange, Utensils } from 'lucide-react';
+import { Target, Flag, CalendarRange, Utensils, X, ExternalLink, Download, CheckCircle2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -162,6 +162,8 @@ export default function App() {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [initialPolicyTab, setInitialPolicyTab] = useState<PolicyType>('privacy');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   const handleOpenPolicy = (type: PolicyType) => {
     setInitialPolicyTab(type);
@@ -193,6 +195,13 @@ export default function App() {
   const handleDownloadPDF = async () => {
     if (isGeneratingPDF) return;
     setIsGeneratingPDF(true);
+    
+    // Revoke old blob URL to prevent memory leaks
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+      setPdfBlobUrl(null);
+    }
+
     // Add the rendering-pdf class to body to make PrintPDFLayout active
     document.body.classList.add('rendering-pdf');
 
@@ -298,7 +307,22 @@ export default function App() {
         heightLeft -= pageHeight;
       }
 
-      pdf.save('playgolf-kids-party-brochure.pdf');
+      // Produce a blob for extreme compatibility across both iOS, Android, and desktop
+      const pdfBlob = pdf.output('blob');
+      const blobURL = URL.createObjectURL(pdfBlob);
+      setPdfBlobUrl(blobURL);
+      setIsPdfModalOpen(true);
+
+      const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+      const isInIframe = window.self !== window.top;
+
+      if (isMobile && !isInIframe) {
+        // Automatically try to open in a new tab, which triggers native preview in mobile Safari / Chrome
+        window.open(blobURL, '_blank');
+      } else {
+        // Otherwise attempt traditional programmatic file download
+        pdf.save('playgolf-kids-party-brochure.pdf');
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
       // Fallback to window print
@@ -425,6 +449,84 @@ export default function App() {
         onClose={() => setIsPolicyModalOpen(false)} 
         initialTab={initialPolicyTab} 
       />
+
+      {/* PDF Ready / Fallback Download Modal for High Compatibility */}
+      {isPdfModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto no-print flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-white rounded-2xl border-4 border-slate-950 p-6 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] animate-fade-in">
+            {/* Close Button */}
+            <button 
+              onClick={() => setIsPdfModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-950 transition-colors"
+              aria-label="Close dialog"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center text-emerald-600">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-black font-display text-slate-950 uppercase tracking-tight">
+                  PDF Brochure Ready!
+                </h3>
+                <p className="text-xs text-slate-500 font-medium font-mono uppercase">
+                  Playgolf Kids Party Packages
+                </p>
+              </div>
+
+              <p className="text-slate-600 text-xs md:text-sm leading-relaxed font-medium">
+                Your high-fidelity printable party brochure has been compiled successfully. If the file did not download automatically, please use the button below to view or save it.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="w-full space-y-2 pt-2">
+                {pdfBlobUrl && (
+                  <a
+                    href={pdfBlobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:scale-102 transition-all"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>View / Save PDF (New Tab)</span>
+                  </a>
+                )}
+
+                {pdfBlobUrl && (
+                  <a
+                    href={pdfBlobUrl}
+                    download="playgolf-kids-party-brochure.pdf"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-950 font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)]"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download File Directly</span>
+                  </a>
+                )}
+
+                <button
+                  onClick={() => setIsPdfModalOpen(false)}
+                  className="w-full px-5 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider"
+                >
+                  Dismiss
+                </button>
+              </div>
+
+              {/* Tips */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-left w-full">
+                <p className="text-[10px] font-black text-slate-800 uppercase tracking-wider mb-1">
+                  💡 Mobile Devices Tip:
+                </p>
+                <p className="text-[10px] text-slate-500 font-medium leading-normal">
+                  Tap <span className="font-bold">"View / Save PDF"</span>. Once the PDF loads in your browser tab, use your browser's <span className="font-bold">Share</span> button and choose <span className="font-bold">"Save to Files"</span>, <span className="font-bold">"Print"</span>, or copy/share via messaging.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
