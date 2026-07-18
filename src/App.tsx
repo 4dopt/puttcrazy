@@ -5,7 +5,7 @@ import InteractivePlanner from './components/InteractivePlanner';
 import BookingFooter from './components/BookingFooter';
 import PrintPDFLayout from './components/PrintPDFLayout';
 import PolicyModal, { PolicyType } from './components/PolicyModal';
-import { Target, Flag, CalendarRange, Utensils, X, ExternalLink, Download, CheckCircle2, Printer, Image, FileText } from 'lucide-react';
+import { Target, Flag, CalendarRange, Utensils, X, ExternalLink, Download, CheckCircle2, Printer, Image, FileText, Share2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -163,8 +163,30 @@ export default function App() {
   const [initialPolicyTab, setInitialPolicyTab] = useState<PolicyType>('privacy');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
+  const [pdfFileObject, setPdfFileObject] = useState<File | null>(null);
   const [brochureImgUrl, setBrochureImgUrl] = useState<string | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+
+  const handleSharePDF = async () => {
+    if (!pdfFileObject) return;
+    try {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFileObject] })) {
+        await navigator.share({
+          files: [pdfFileObject],
+          title: 'Playgolf Kids Party Brochure',
+          text: 'Check out this awesome Playgolf Kids Party Brochure!',
+        });
+      } else {
+        alert('Sharing is not supported on this device/browser. Please use the direct download buttons.');
+      }
+    } catch (err) {
+      // Ignore if user cancelled
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Error sharing PDF:', err);
+      }
+    }
+  };
 
   const handleOpenPolicy = (type: PolicyType) => {
     setInitialPolicyTab(type);
@@ -197,11 +219,16 @@ export default function App() {
     if (isGeneratingPDF) return;
     setIsGeneratingPDF(true);
     
-    // Revoke old blob URL to prevent memory leaks
+    // Revoke old blob URLs to prevent memory leaks
     if (pdfBlobUrl) {
       URL.revokeObjectURL(pdfBlobUrl);
       setPdfBlobUrl(null);
     }
+    if (pdfDownloadUrl) {
+      URL.revokeObjectURL(pdfDownloadUrl);
+      setPdfDownloadUrl(null);
+    }
+    setPdfFileObject(null);
 
     // Add the rendering-pdf class to body to make PrintPDFLayout active
     document.body.classList.add('rendering-pdf');
@@ -309,21 +336,42 @@ export default function App() {
         heightLeft -= pageHeight;
       }
 
-      // Produce a blob for extreme compatibility across both iOS, Android, and desktop
+      // Produce standard PDF Blob for viewing/printing
       const pdfBlob = pdf.output('blob');
       const blobURL = URL.createObjectURL(pdfBlob);
       setPdfBlobUrl(blobURL);
+
+      // Create a forced octet-stream blob for direct downloads (prevents blank screen/viewing inline on mobile)
+      const downloadBlob = new Blob([pdfBlob], { type: 'application/octet-stream' });
+      const downloadBlobURL = URL.createObjectURL(downloadBlob);
+      setPdfDownloadUrl(downloadBlobURL);
+
+      // Create File object for native sharing
+      try {
+        const file = new File([pdfBlob], 'playgolf-kids-party-brochure.pdf', { type: 'application/pdf' });
+        setPdfFileObject(file);
+      } catch (fileErr) {
+        console.error('Failed to create File object for share:', fileErr);
+      }
+
       setIsPdfModalOpen(true);
 
       const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
-      const isInIframe = window.self !== window.top;
 
-      if (isMobile && !isInIframe) {
-        // Automatically try to open in a new tab, which triggers native preview in mobile Safari / Chrome
-        window.open(blobURL, '_blank');
-      } else {
-        // Otherwise attempt traditional programmatic file download
-        pdf.save('playgolf-kids-party-brochure.pdf');
+      // On PC (non-mobile), automatically trigger the download of the octet-stream blob.
+      // This directly downloads the file on PC without prompting any print dialog or blank page!
+      if (!isMobile) {
+        try {
+          const link = document.createElement('a');
+          link.href = downloadBlobURL;
+          link.download = 'playgolf-kids-party-brochure.pdf';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (downloadErr) {
+          console.error('Failed auto-downloading PDF on desktop:', downloadErr);
+          pdf.save('playgolf-kids-party-brochure.pdf');
+        }
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -475,79 +523,125 @@ export default function App() {
                     Brochure Generated!
                   </h3>
                   <p className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-1">
-                    Select Your Saved Method Below
+                    Ready for your device
                   </p>
                 </div>
               </div>
 
               <p className="text-slate-600 text-xs leading-relaxed font-medium">
-                To guarantee compatibility on mobile devices, tablets, and in-app browsers, choose the save method that works best for your device:
+                To guarantee compatibility across mobile devices, tablets, and in-app browsers, please choose your preferred save option below:
               </p>
 
               {/* Option List */}
               <div className="space-y-3.5">
                 
-                {/* Method 1: System Print / Native Save as PDF */}
-                <div className="p-3.5 bg-emerald-50/50 border-2 border-emerald-500/30 rounded-xl flex items-start gap-3 hover:bg-emerald-50 transition-colors">
-                  <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 shrink-0">
-                    <Printer className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
-                      Method 1: Native System Print (Recommended for iOS/Android)
-                    </h4>
-                    <p className="text-[11px] text-slate-600 leading-normal">
-                      Triggers the standard device print dialog. You can select <span className="font-bold">"Save to PDF"</span> or send it to your home printer instantly.
-                    </p>
-                    <button
-                      onClick={() => {
-                        window.print();
-                      }}
-                      className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]"
-                    >
-                      <Printer className="w-3 h-3" />
-                      Open System Print Dialog
-                    </button>
-                  </div>
-                </div>
-
-                {/* Method 2: Direct PDF File */}
-                {pdfBlobUrl && (
-                  <div className="p-3.5 bg-amber-50/50 border-2 border-amber-500/30 rounded-xl flex items-start gap-3 hover:bg-amber-50 transition-colors">
-                    <div className="p-2 bg-amber-100 text-amber-700 rounded-lg border border-amber-200 shrink-0">
-                      <FileText className="w-4 h-4" />
+                {/* Method 1: Direct File Download (Highly optimized using octet-stream to trigger real downloads) */}
+                {pdfDownloadUrl && (
+                  <div className="p-3.5 bg-yellow-50/50 border-2 border-yellow-400/40 rounded-xl flex items-start gap-3 hover:bg-yellow-50 transition-colors">
+                    <div className="p-2 bg-yellow-100 text-yellow-800 rounded-lg border border-yellow-200 shrink-0">
+                      <Download className="w-4 h-4" />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
-                        Method 2: PDF File Download
+                      <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider flex items-center gap-1.5">
+                        <span>Method 1: Direct PDF Download</span>
+                        <span className="bg-yellow-300 text-slate-950 text-[8px] px-1.5 py-0.5 rounded-full font-mono uppercase font-bold tracking-tight">Most Reliable</span>
                       </h4>
                       <p className="text-[11px] text-slate-600 leading-normal">
-                        Launches a standard PDF download or opens the file in a new tab.
+                        Downloads the PDF file directly onto your device (works on PC, iPhone, iPad, and Android).
                       </p>
-                      <div className="flex flex-wrap gap-2 pt-1">
+                      <div className="pt-1">
                         <a
-                          href={pdfBlobUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          View PDF in New Tab
-                        </a>
-                        <a
-                          href={pdfBlobUrl}
+                          href={pdfDownloadUrl}
                           download="playgolf-kids-party-brochure.pdf"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.15)]"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:scale-98 transition-all"
                         >
-                          <Download className="w-3 h-3" />
-                          Force PDF Download
+                          <Download className="w-3.5 h-3.5" />
+                          Download PDF File
                         </a>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Method 3: Long-press image */}
+                {/* Method 2: System Share sheet (Available on Mobile) */}
+                {navigator.share && pdfFileObject && (
+                  <div className="p-3.5 bg-emerald-50/50 border-2 border-emerald-500/30 rounded-xl flex items-start gap-3 hover:bg-emerald-50 transition-colors">
+                    <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 shrink-0">
+                      <Share2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
+                        Method 2: Send / Save via Mobile Share Sheet
+                      </h4>
+                      <p className="text-[11px] text-slate-600 leading-normal">
+                        Opens the native device dialog. Perfect for sending directly via <span className="font-bold">WhatsApp, Email</span>, or selecting <span className="font-bold">"Save to Files"</span>.
+                      </p>
+                      <div className="pt-1">
+                        <button
+                          onClick={handleSharePDF}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs uppercase tracking-wider rounded-xl border-2 border-slate-950 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] active:scale-98 transition-all"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          Share / Save to Files
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Method 3: View PDF in New Tab */}
+                {pdfBlobUrl && (
+                  <div className="p-3.5 bg-blue-50/50 border-2 border-blue-500/20 rounded-xl flex items-start gap-3 hover:bg-blue-50 transition-colors">
+                    <div className="p-2 bg-blue-100 text-blue-700 rounded-lg border border-blue-200 shrink-0">
+                      <ExternalLink className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
+                        Method 3: View PDF (New Tab)
+                      </h4>
+                      <p className="text-[11px] text-slate-600 leading-normal">
+                        Opens the high-resolution PDF inside a fresh browser tab to view, zoom, or print.
+                      </p>
+                      <div className="pt-1">
+                        <a
+                          href={pdfBlobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.15)]"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Open PDF Viewer
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Method 4: System Print */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3 hover:bg-slate-100 transition-colors">
+                  <div className="p-2 bg-slate-100 text-slate-700 rounded-lg border border-slate-200 shrink-0">
+                    <Printer className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
+                      Method 4: Device Print Dialog
+                    </h4>
+                    <p className="text-[11px] text-slate-600 leading-normal">
+                      Send the brochure directly to your home printer or use system settings to save.
+                    </p>
+                    <div className="pt-1">
+                      <button
+                        onClick={() => window.print()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider rounded-lg border border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.15)]"
+                      >
+                        <Printer className="w-3 h-3" />
+                        Print Layout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Method 5: Save as Image (Mobile fallback) */}
                 {brochureImgUrl && (
                   <div className="p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl flex flex-col gap-3">
                     <div className="flex items-start gap-3">
@@ -556,10 +650,10 @@ export default function App() {
                       </div>
                       <div className="flex-1 space-y-1">
                         <h4 className="text-xs font-black uppercase text-slate-950 tracking-wider">
-                          Method 3: Save as Image (100% Mobile Bulletproof)
+                          Method 5: Save as Image (Photo Roll)
                         </h4>
                         <p className="text-[11px] text-slate-600 leading-normal">
-                          For instant saving, tap & hold (long press) the compiled image preview below to save it directly to your device's Camera Roll / Photos app.
+                          Press and hold (long tap) the preview image below to save it directly to your Photos / Camera Roll.
                         </p>
                       </div>
                     </div>
@@ -578,10 +672,10 @@ export default function App() {
                     <a
                       href={brochureImgUrl}
                       download="playgolf-kids-party-brochure.png"
-                      className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-slate-950 hover:bg-slate-900 text-white font-display font-black text-[10px] uppercase tracking-wider rounded-lg border-2 border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)]"
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-950 hover:bg-slate-900 text-white font-display font-black text-[10px] uppercase tracking-wider rounded-lg border-2 border-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)]"
                     >
                       <Download className="w-3 h-3" />
-                      Download Brochure as PNG Image
+                      Download PNG Image
                     </a>
                   </div>
                 )}
