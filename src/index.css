@@ -81,12 +81,15 @@
 /* PDF Generation Off-screen Styles */
 body.rendering-pdf .print-only {
   display: block !important;
-  position: absolute !important;
-  left: -9999px !important;
+  position: fixed !important;
+  left: 0 !important;
   top: 0 !important;
   width: 800px !important;
+  z-index: -9999 !important;
   background-color: white !important;
   color: black !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 body.rendering-pdf .print-container {
