@@ -316,14 +316,45 @@ export default function App() {
       setIsPdfModalOpen(true);
 
       const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
-      const isInIframe = window.self !== window.top;
+      const fileName = 'playgolf-kids-party-brochure.pdf';
 
-      if (isMobile && !isInIframe) {
-        // Automatically try to open in a new tab, which triggers native preview in mobile Safari / Chrome
-        window.open(blobURL, '_blank');
-      } else {
-        // Otherwise attempt traditional programmatic file download
-        pdf.save('playgolf-kids-party-brochure.pdf');
+      // Try Mobile Native Share first if supported (extremely reliable on modern iOS/Android and prompts to Save to Files/Drive/AirDrop)
+      let sharedSuccessfully = false;
+      if (isMobile && navigator.canShare) {
+        try {
+          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+          if (navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+              files: [pdfFile],
+              title: 'Playgolf Kids Party Brochure',
+              text: 'Here is your Playgolf kids party packages and menu brochure!',
+            });
+            sharedSuccessfully = true;
+          }
+        } catch (shareErr) {
+          console.warn('Navigator share failed or was dismissed:', shareErr);
+        }
+      }
+
+      // If not mobile or share was cancelled/unsupported, trigger automatic direct download
+      if (!sharedSuccessfully) {
+        try {
+          const link = document.createElement('a');
+          link.href = blobURL;
+          link.download = fileName;
+          if (isMobile) {
+            link.target = '_blank';
+          }
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+          }, 200);
+        } catch (dlErr) {
+          console.error('Programmatic download failed:', dlErr);
+          // Fallback to opening in new tab
+          window.open(blobURL, '_blank');
+        }
       }
     } catch (error) {
       console.error('Error generating PDF:', error);

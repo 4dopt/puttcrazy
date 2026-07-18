@@ -42,6 +42,11 @@
   /* Force print layout */
   .print-only {
     display: block !important;
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: auto !important;
+    pointer-events: auto !important;
   }
 
   .print-container {
@@ -75,26 +80,14 @@
 }
 
 .print-only {
-  display: none;
-}
-
-/* PDF Generation Off-screen Styles */
-body.rendering-pdf .no-print {
-  display: none !important;
-}
-
-body.rendering-pdf .print-only {
   display: block !important;
-  position: relative !important;
-  margin: 0 auto !important;
-  box-shadow: none !important;
-  background-color: white !important;
-}
-
-body.rendering-pdf {
-  background-color: white !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  position: fixed !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: 800px !important;
+  height: 1130px !important;
+  z-index: -9999 !important;
+  pointer-events: none !important;
 }
 
 
