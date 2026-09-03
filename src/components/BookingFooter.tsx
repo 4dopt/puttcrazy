@@ -23,7 +23,6 @@ export default function BookingFooter({ onOpenPolicy }: BookingFooterProps) {
             <li>Packages are recommended for children aged <strong className="text-slate-950">5 to 12 years old</strong>. Adults/guardians must supervise the party.</li>
             <li>A minimum of <strong className="text-slate-950">6 kids</strong> is required for all kids party packages (Driving Range, Adventure Golf, and Combo Parties).</li>
             <li>Final headcount, allergy notifications, and customized meal selections must be confirmed <strong className="text-slate-950">at least 3 days prior</strong> to the scheduled party date.</li>
-            <li>Catering is prepared fresh on the day of the party. All main meals are served hot with crispy skinny fries and a choice of soft drink.</li>
           </ul>
         </div>
 

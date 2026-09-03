@@ -138,8 +138,8 @@ export function getMockAvailability(): DayAvailability[] {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
-  // Generate 14 days of availability starting from today
-  for (let i = 0; i < 14; i++) {
+  // Generate 60 days of availability (next 2 months) starting from today
+  for (let i = 0; i < 60; i++) {
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + i);
     

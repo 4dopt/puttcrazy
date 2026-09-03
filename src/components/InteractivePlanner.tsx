@@ -45,6 +45,24 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
 
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
+
+  // Extract available months from 60 days
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    availability.forEach(d => {
+      const parts = d.date.split(' ');
+      const month = parts[parts.length - 1];
+      if (month) monthsSet.add(month);
+    });
+    return Array.from(monthsSet);
+  }, [availability]);
+
+  // Filter dates based on selected month
+  const filteredAvailability = useMemo(() => {
+    if (selectedMonthFilter === 'all') return availability;
+    return availability.filter(d => d.date.endsWith(` ${selectedMonthFilter}`));
+  }, [availability, selectedMonthFilter]);
 
   // Get active package info
   const selectedPackage = useMemo(() => {
@@ -344,13 +362,45 @@ ${state.parentName || 'Parent / Guardian'}`
 
           <div className="space-y-5">
             {/* Quick date picker row */}
-            <div className="space-y-2">
-              <label htmlFor="select-date" className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-emerald-700" />
-                Select Birthday Date (Next 14 Days)
-              </label>
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label htmlFor="select-date" className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-emerald-700" />
+                  Select Birthday Date (Next 2 Months · 60 Days Available)
+                </label>
+                
+                {/* Month filter buttons */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonthFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                      selectedMonthFilter === 'all'
+                        ? 'bg-slate-950 text-white border-slate-950 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
+                        : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
+                    }`}
+                  >
+                    All Dates ({availability.length})
+                  </button>
+                  {availableMonths.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setSelectedMonthFilter(m)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                        selectedMonthFilter === m
+                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
+                          : 'bg-white text-slate-700 border-slate-300 hover:border-slate-400'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 snap-x">
-                {availability.map((day) => {
+                {filteredAvailability.map((day) => {
                   const isSelected = state.partyDate === day.date;
                   return (
                     <button

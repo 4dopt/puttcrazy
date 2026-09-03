@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Putt Crazy & Playgolf Kids Parties</title>
+    <meta name="description" content="Interactive party planner, brochure, and package calculator for Putt Crazy and Playgolf Colchester kids birthday parties." />
+    <meta property="og:title" content="Putt Crazy & Playgolf Kids Parties" />
+    <meta property="og:description" content="Interactive party planner, brochure, and package calculator for Putt Crazy and Playgolf Colchester kids birthday parties." />
+    <script>
+      (function() {
+        try {
+          var originalFetch = typeof window !== 'undefined' && window.fetch ? window.fetch.bind(window) : undefined;
+          var currentFetch = originalFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return currentFetch;
+            },
+            set: function(fn) {
+              currentFetch = typeof fn === 'function' ? fn : originalFetch;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          // Fallback if defineProperty cannot be set
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
