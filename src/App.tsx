@@ -1,17 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import BrochureView from './components/BrochureView';
 import InteractivePlanner from './components/InteractivePlanner';
 import BookingFooter from './components/BookingFooter';
 import PrintPDFLayout from './components/PrintPDFLayout';
 import PolicyModal, { PolicyType } from './components/PolicyModal';
-import { Target, Flag, CircleDollarSign, CalendarRange, Utensils, HelpCircle } from 'lucide-react';
+import AdminDashboard from './components/AdminDashboard';
+import AdminPasswordModal from './components/AdminPasswordModal';
+import { Target, Flag, CircleDollarSign, CalendarRange, Utensils, HelpCircle, Lock } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'brochure' | 'planner'>('brochure');
   const [selectedPackageId, setSelectedPackageId] = useState<string>('driving-range');
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [initialPolicyTab, setInitialPolicyTab] = useState<PolicyType>('privacy');
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('playgolf_admin_auth') === 'true';
+    }
+    return false;
+  });
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  useEffect(() => {
+    // Check for direct admin navigation via URL hash or query param
+    if (typeof window !== 'undefined') {
+      if (window.location.hash === '#admin' || window.location.search.includes('admin=true')) {
+        const isAuth = sessionStorage.getItem('playgolf_admin_auth') === 'true';
+        if (isAuth) {
+          setIsAdminView(true);
+        } else {
+          setIsPasswordModalOpen(true);
+        }
+      }
+    }
+  }, []);
+
+
 
   const handleOpenPolicy = (type: PolicyType) => {
     setInitialPolicyTab(type);
@@ -46,6 +72,53 @@ export default function App() {
     window.print();
     document.title = originalTitle;
   };
+
+  const handleBackFromAdmin = () => {
+    setIsAdminView(false);
+    if (typeof window !== 'undefined' && window.location.hash === '#admin') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminAuthenticated(false);
+    setIsAdminView(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('playgolf_admin_auth');
+      if (window.location.hash === '#admin') {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  };
+
+  const handleOpenAdmin = () => {
+    if (isAdminAuthenticated) {
+      setIsAdminView(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setIsPasswordModalOpen(true);
+    }
+  };
+
+  const handlePasswordSuccess = () => {
+    setIsAdminAuthenticated(true);
+    setIsPasswordModalOpen(false);
+    setIsAdminView(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('playgolf_admin_auth', 'true');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (isAdminView && isAdminAuthenticated) {
+    return (
+      <AdminDashboard 
+        onBackToSite={handleBackFromAdmin} 
+        onLogout={handleAdminLogout}
+      />
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-[#fbfcfb] text-slate-800 font-sans selection:bg-emerald-100 selection:text-emerald-950 antialiased">
@@ -117,6 +190,19 @@ export default function App() {
         {/* Booking footer */}
         <BookingFooter onOpenPolicy={handleOpenPolicy} />
 
+        {/* Admin button after footer in very light, discreet color */}
+        <div className="py-5 text-center bg-[#fbfcfb] border-t border-slate-200/40 no-print">
+          <button
+            id="btn-admin-portal"
+            onClick={handleOpenAdmin}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono font-medium text-slate-400 hover:text-slate-700 bg-slate-100/40 hover:bg-slate-200/60 border border-slate-200/50 hover:border-slate-300 transition-all cursor-pointer tracking-wider"
+            title="Open Staff Admin Backend"
+          >
+            <Lock className="w-3 h-3 text-slate-300" />
+            <span>Staff Admin Portal</span>
+          </button>
+        </div>
+
         {/* Floating Quick Planner Trigger (Visible on Brochure screen) */}
         {activeTab === 'brochure' && (
           <div className="fixed bottom-6 right-6 z-40 hidden md:block animate-pulse hover:animate-none">
@@ -132,6 +218,13 @@ export default function App() {
 
       </div>
 
+      {/* Staff Admin Password Challenge Modal */}
+      <AdminPasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onSuccess={handlePasswordSuccess}
+      />
+
       <PolicyModal 
         isOpen={isPolicyModalOpen} 
         onClose={() => setIsPolicyModalOpen(false)} 
@@ -141,3 +234,4 @@ export default function App() {
     </div>
   );
 }
+

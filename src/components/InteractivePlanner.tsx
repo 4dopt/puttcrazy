@@ -1,7 +1,9 @@
 import { useState, useMemo, FormEvent, useEffect } from 'react';
 import { PARTY_PACKAGES, FOOD_MAINS, FOOD_DRINKS, FOOD_EXTRAS, getMockAvailability } from '../data';
 import { CalculatorState, BirthdaySlot } from '../types';
-import { Calendar, Clock, Users, Coffee, Mail, CheckCircle, AlertCircle, ShoppingBag, Receipt, FileText, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, Clock, Users, Coffee, Mail, CheckCircle, AlertCircle, ShoppingBag, Receipt, FileText, ChevronRight, Sparkles, Check, Database } from 'lucide-react';
+import { saveBooking } from '../services/bookingStorage';
+
 
 interface InteractivePlannerProps {
   initialPackageId: string;
@@ -44,6 +46,7 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
   });
 
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [lastSavedBookingId, setLastSavedBookingId] = useState<string | null>(null);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
 
@@ -208,16 +211,50 @@ ${state.parentName || 'Parent / Guardian'}`
       return;
     }
     
-    // Save booking locally to simulate persistence
+    // Save booking locally to simulate slot reservation
     const bookingKey = `${state.partyDate}-${state.partyTime}`;
     const newBookings = [...localBookings, bookingKey];
     setLocalBookings(newBookings);
     localStorage.setItem('party_bookings', JSON.stringify(newBookings));
     
+    // Extract human-readable names for selected extras
+    const extrasNames = state.selectedExtras
+      .map(id => FOOD_EXTRAS.find(e => e.id === id)?.name)
+      .filter(Boolean) as string[];
+
+    // Save full inquiry form details into the Admin Backend database
+    const saved = saveBooking({
+      selectedPackageId: selectedPackage.id,
+      packageName: selectedPackage.name,
+      pricePerKid: selectedPackage.pricePerKid,
+      kidsCount: state.kidsCount,
+      partyDate: state.partyDate,
+      partyTime: state.partyTime,
+      parentName: state.parentName || 'Parent / Guardian',
+      parentPhone: state.parentPhone || '',
+      parentEmail: state.parentEmail || '',
+      childName: state.childName || 'Birthday Child',
+      childAge: state.childAge || 7,
+      allergiesNote: state.allergiesNote || 'None',
+      selectedMains: state.selectedMains,
+      selectedDrinks: state.selectedDrinks,
+      selectedExtras: state.selectedExtras,
+      extrasNames,
+      baseTotal: calculations.baseTotal,
+      extrasTotal: calculations.extrasTotal,
+      discountAmount: calculations.discountAmount,
+      total: calculations.total,
+      status: 'Pending',
+      source: 'web_form'
+    });
+
+    setLastSavedBookingId(saved.id);
     setBookingSuccess(true);
-    // Open the email client draft
+    
+    // Attempt opening mail draft
     window.location.href = emailDraft;
   };
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-6xl mx-auto no-print">
@@ -780,16 +817,41 @@ ${state.parentName || 'Parent / Guardian'}`
 
         {/* Success Alert Banner */}
         {bookingSuccess && (
-          <div className="bg-emerald-50 border-4 border-slate-950 text-slate-950 p-5 rounded-3xl flex gap-3.5 items-start shadow-[4px_4px_0px_0px_rgba(16,185,129,1)]">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="text-xs font-black block uppercase tracking-tight text-emerald-900">Email Draft Triggered!</span>
-              <p className="text-[11px] text-slate-700 leading-normal font-medium">
-                We've compiled your party configuration into an email draft and triggered your device's default mail client. Please hit "Send" in your mail app, or copy the booking proposal preview box if you prefer.
-              </p>
+          <div className="bg-emerald-50 border-4 border-slate-950 text-slate-950 p-5 rounded-3xl space-y-3 shadow-[5px_5px_0px_0px_rgba(16,185,129,1)] animate-fade-in">
+            <div className="flex gap-3 items-start">
+              <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-tight text-emerald-950">
+                    Booking Request Saved!
+                  </span>
+                  {lastSavedBookingId && (
+                    <span className="bg-slate-950 text-yellow-400 font-mono text-[10px] font-black px-2 py-0.5 rounded">
+                      {lastSavedBookingId}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-700 leading-normal font-medium">
+                  Your inquiry and chosen package options have been securely recorded in our system and forwarded to the event coordinators.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white/80 rounded-2xl p-3 border border-emerald-300 text-[10px] text-slate-700 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 font-bold text-emerald-900">
+                <Database className="w-3.5 h-3.5 text-emerald-700" />
+                Data logged in staff admin database
+              </span>
+              <a
+                href={emailDraft}
+                className="font-black text-slate-950 underline hover:text-emerald-700 font-mono uppercase"
+              >
+                Re-open Email
+              </a>
             </div>
           </div>
         )}
+
 
       </div>
 
