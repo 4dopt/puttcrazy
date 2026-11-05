@@ -28,11 +28,11 @@ export default function Header({ activeTab, setActiveTab, onPrint }: HeaderProps
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-4xl md:text-5xl font-black font-display italic tracking-tight text-white leading-none drop-shadow">
-              PUTT CRAZY
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-white leading-tight drop-shadow">
+              playgolf northwick park
             </h1>
             <div className="text-lg md:text-xl font-bold text-yellow-300 font-display">
-              The Ultimate Birthday Adventure
+              Putt Crazy & Driving Range Kids Parties
             </div>
           </div>
 

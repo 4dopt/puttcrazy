@@ -1,8 +1,9 @@
 import { useState, useMemo, FormEvent, useEffect } from 'react';
 import { PARTY_PACKAGES, FOOD_MAINS, FOOD_DRINKS, FOOD_EXTRAS, getMockAvailability } from '../data';
-import { CalculatorState, BirthdaySlot } from '../types';
-import { Calendar, Clock, Users, Coffee, Mail, CheckCircle, AlertCircle, ShoppingBag, Receipt, FileText, ChevronRight, Sparkles, Check, Database } from 'lucide-react';
+import { CalculatorState, BirthdaySlot, BlockedDateRecord } from '../types';
+import { Calendar, Clock, Users, Coffee, Mail, CheckCircle, AlertCircle, ShoppingBag, Receipt, FileText, ChevronRight, Sparkles, Check, Database, Ban, CalendarX } from 'lucide-react';
 import { saveBooking } from '../services/bookingStorage';
+import { getAllBlockedDates, UPDATE_BLOCKED_DATES_EVENT } from '../services/blockedDatesStorage';
 
 
 interface InteractivePlannerProps {
@@ -17,6 +18,9 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
   // Track locally sent bookings to simulate slot reservation
   const [localBookings, setLocalBookings] = useState<string[]>([]);
 
+  // Staff blocked dates
+  const [blockedDates, setBlockedDates] = useState<BlockedDateRecord[]>(() => getAllBlockedDates());
+
   useEffect(() => {
     const saved = localStorage.getItem('party_bookings');
     if (saved) {
@@ -26,6 +30,14 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
         console.error('Failed to parse local bookings', e);
       }
     }
+
+    const handleBlockedUpdate = () => {
+      setBlockedDates(getAllBlockedDates());
+    };
+    window.addEventListener(UPDATE_BLOCKED_DATES_EVENT, handleBlockedUpdate);
+    return () => {
+      window.removeEventListener(UPDATE_BLOCKED_DATES_EVENT, handleBlockedUpdate);
+    };
   }, []);
 
   // Local form/calculator state
@@ -94,20 +106,21 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
     }));
   };
 
-  const handleExtraToggle = (extraId: string) => {
-    setState(prev => {
-      const exists = prev.selectedExtras.includes(extraId);
-      return {
-        ...prev,
-        selectedExtras: exists
-          ? prev.selectedExtras.filter(id => id !== extraId)
-          : [...prev.selectedExtras, extraId]
-      };
-    });
-  };
+  // Check if current partyDate is blocked by staff
+  const selectedDayBlockedInfo = useMemo(() => {
+    if (!state.partyDate) return null;
+    const normalized = state.partyDate.trim().toLowerCase();
+    return blockedDates.find(b => 
+      (b.date && b.date.toLowerCase() === normalized) || 
+      (b.isoDate && b.isoDate.toLowerCase() === normalized) ||
+      (b.date && normalized.includes(b.date.toLowerCase()))
+    ) || null;
+  }, [state.partyDate, blockedDates]);
 
   // Get active slots for the selected date
   const availableSlotsForSelectedDate = useMemo(() => {
+    if (selectedDayBlockedInfo) return [];
+
     const targetDay = availability.find(d => d.date === state.partyDate);
     if (!targetDay) return [];
 
@@ -125,7 +138,7 @@ export default function InteractivePlanner({ initialPackageId, onSetPackage }: I
 
       return slot;
     });
-  }, [state.partyDate, availability, localBookings]);
+  }, [state.partyDate, availability, localBookings, selectedDayBlockedInfo]);
 
   // Calculations
   const calculations = useMemo(() => {
@@ -211,6 +224,11 @@ ${state.parentName || 'Parent / Guardian'}`
       return;
     }
     
+    if (selectedDayBlockedInfo) {
+      alert(`Sorry, ${state.partyDate} is not available for party bookings (${selectedDayBlockedInfo.reason}). Please select another date.`);
+      return;
+    }
+
     // Save booking locally to simulate slot reservation
     const bookingKey = `${state.partyDate}-${state.partyTime}`;
     const newBookings = [...localBookings, bookingKey];
@@ -439,21 +457,40 @@ ${state.parentName || 'Parent / Guardian'}`
               <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 snap-x">
                 {filteredAvailability.map((day) => {
                   const isSelected = state.partyDate === day.date;
+                  const blockedInfo = blockedDates.find(b => 
+                    (b.date && b.date.toLowerCase() === day.date.toLowerCase()) || 
+                    (day.isoDate && b.isoDate === day.isoDate)
+                  );
+                  const isBlocked = !!blockedInfo;
+
                   return (
                     <button
                       key={day.date}
                       type="button"
                       onClick={() => setState(prev => ({ ...prev, partyDate: day.date, partyTime: '' }))}
-                      className={`px-4 py-3 rounded-2xl border-2 shrink-0 text-left snap-start transition-all ${
-                        isSelected
-                          ? 'border-slate-950 bg-yellow-400 text-slate-950 font-black shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]'
-                          : 'border-slate-300 bg-white hover:border-slate-400 text-slate-700'
+                      className={`px-4 py-3 rounded-2xl border-2 shrink-0 text-left snap-start transition-all relative ${
+                        isBlocked
+                          ? isSelected
+                            ? 'border-rose-600 bg-rose-50 text-rose-950 font-black shadow-[3px_3px_0px_0px_rgba(225,29,72,1)]'
+                            : 'border-rose-200 bg-rose-50/70 hover:border-rose-300 text-rose-900'
+                          : isSelected
+                            ? 'border-slate-950 bg-yellow-400 text-slate-950 font-black shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]'
+                            : 'border-slate-300 bg-white hover:border-slate-400 text-slate-700'
                       }`}
                     >
-                      <span className={`block text-[9px] uppercase font-bold tracking-wider ${isSelected ? 'text-slate-800' : 'text-slate-500'}`}>
-                        {day.date.split(',')[0]}
-                      </span>
-                      <span className="block text-xs font-black mt-0.5">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className={`block text-[9px] uppercase font-bold tracking-wider ${
+                          isBlocked ? 'text-rose-600' : isSelected ? 'text-slate-800' : 'text-slate-500'
+                        }`}>
+                          {day.date.split(',')[0]}
+                        </span>
+                        {isBlocked && (
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 bg-rose-200 text-rose-800 rounded font-mono">
+                            Closed
+                          </span>
+                        )}
+                      </div>
+                      <span className={`block text-xs font-black mt-0.5 ${isBlocked ? 'line-through text-rose-950' : ''}`}>
                         {day.date.split(',')[1]}
                       </span>
                     </button>
@@ -462,112 +499,157 @@ ${state.parentName || 'Parent / Guardian'}`
               </div>
             </div>
 
-            {/* Slots grid corresponding to date */}
-            <div className="space-y-3">
-              <label className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-4 h-4 text-emerald-700" />
-                Available Birthday Slots for <span className="text-emerald-800 font-extrabold">{state.partyDate}</span>
-              </label>
-
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {availableSlotsForSelectedDate.map((slot) => {
-                  const isBooked = slot.status === 'booked';
-                  const isSelected = state.partyTime === slot.time;
-                  
-                  return (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      disabled={isBooked}
-                      onClick={() => setState(prev => ({ ...prev, partyTime: slot.time }))}
-                      className={`p-3 rounded-xl border-2 text-center transition-all ${
-                        isBooked
-                          ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
-                          : isSelected
-                            ? 'border-slate-950 bg-emerald-700 text-white font-black shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] scale-[1.02]'
-                            : 'bg-white border-slate-300 hover:border-slate-400 text-slate-700 font-semibold'
-                      }`}
-                    >
-                      <span className="block text-xs font-black">{slot.time}</span>
-                      
-                      {isBooked ? (
-                        <span className="block text-[8px] font-mono uppercase font-bold text-slate-400 mt-1">Booked</span>
-                      ) : slot.status === 'filling-fast' ? (
-                        <span className={`block text-[8px] font-mono uppercase font-bold mt-1 ${isSelected ? 'text-yellow-300' : 'text-amber-600 animate-pulse'}`}>
-                          Hurry!
-                        </span>
-                      ) : (
-                        <span className={`block text-[8px] font-mono uppercase font-bold mt-1 ${isSelected ? 'text-emerald-200' : 'text-emerald-600'}`}>
-                          Available
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Custom precise time picker */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-extrabold text-slate-950 uppercase tracking-wider block">Or Specify Custom Precise Time</span>
-                <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">Anytime between 12:00 PM and 9:00 PM</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="time"
-                  min="12:00"
-                  max="21:00"
-                  value={
-                    state.partyTime 
-                      ? (() => {
-                          const matches = state.partyTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                          if (matches) {
-                            let hours = parseInt(matches[1]);
-                            const minutes = matches[2];
-                            const ampm = matches[3].toUpperCase();
-                            if (ampm === 'PM' && hours < 12) hours += 12;
-                            if (ampm === 'AM' && hours === 12) hours = 0;
-                            return `${String(hours).padStart(2, '0')}:${minutes}`;
-                          }
-                          return '';
-                        })()
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const timeVal = e.target.value;
-                    if (timeVal) {
-                      const [hoursStr, minutesStr] = timeVal.split(':');
-                      let hours = parseInt(hoursStr);
-                      const minutes = parseInt(minutesStr);
-                      
-                      // Validate bounds (12:00 to 21:00)
-                      if (hours < 12) {
-                        hours = 12;
-                      } else if (hours > 21 || (hours === 21 && minutes > 0)) {
-                        hours = 21;
-                      }
-                      
-                      const ampm = hours >= 12 ? 'PM' : 'AM';
-                      let displayHours = hours;
-                      if (displayHours > 12) displayHours -= 12;
-                      if (displayHours === 0) displayHours = 12;
-                      
-                      const finalMinutes = String(minutes).padStart(2, '0');
-                      const formattedTime = `${String(displayHours).padStart(2, '0')}:${finalMinutes} ${ampm}`;
-                      setState(prev => ({ ...prev, partyTime: formattedTime }));
-                    }
-                  }}
-                  className="px-3 py-2 border-2 border-slate-950 rounded-lg text-xs font-black text-slate-950 bg-white focus:outline-none focus:border-emerald-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                />
-                
-                {state.partyTime && (
-                  <div className="bg-emerald-50 text-emerald-800 border-2 border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider">
-                    Selected: {state.partyTime}
+            {/* Blocked Date Notice or Available Slots */}
+            {selectedDayBlockedInfo ? (
+              <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-rose-100 border border-rose-300 flex items-center justify-center shrink-0">
+                    <Ban className="w-4 h-4 text-rose-600" />
                   </div>
-                )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-rose-950 font-display">
+                        Parties Unavailable on {state.partyDate}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-200 text-rose-900 font-mono">
+                        Date Blocked
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-rose-800 font-semibold block">
+                      Kids party bookings are closed for this day
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-white/90 border border-rose-200 rounded-xl p-3.5 space-y-1">
+                  <div className="text-[10px] font-mono uppercase font-black text-rose-700 tracking-wider">
+                    Blackout Reason:
+                  </div>
+                  <div className="text-xs font-black text-slate-900">
+                    {selectedDayBlockedInfo.reason}
+                  </div>
+                  {selectedDayBlockedInfo.notes && (
+                    <div className="text-[11px] text-slate-600 font-medium pt-1">
+                      {selectedDayBlockedInfo.notes}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] text-rose-800 font-semibold pt-1">
+                  <CalendarX className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span>Please choose another open date from the horizontal calendar above, or phone our events office on 020 8864 2020.</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Slots grid corresponding to date */}
+                <div className="space-y-3">
+                  <label className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1">
+                    <Clock className="w-4 h-4 text-emerald-700" />
+                    Available Birthday Slots for <span className="text-emerald-800 font-extrabold">{state.partyDate}</span>
+                  </label>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {availableSlotsForSelectedDate.map((slot) => {
+                      const isBooked = slot.status === 'booked';
+                      const isSelected = state.partyTime === slot.time;
+                      
+                      return (
+                        <button
+                          key={slot.id}
+                          type="button"
+                          disabled={isBooked}
+                          onClick={() => setState(prev => ({ ...prev, partyTime: slot.time }))}
+                          className={`p-3 rounded-xl border-2 text-center transition-all ${
+                            isBooked
+                              ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-slate-950 bg-emerald-700 text-white font-black shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] scale-[1.02]'
+                                : 'bg-white border-slate-300 hover:border-slate-400 text-slate-700 font-semibold'
+                          }`}
+                        >
+                          <span className="block text-xs font-black">{slot.time}</span>
+                          
+                          {isBooked ? (
+                            <span className="block text-[8px] font-mono uppercase font-bold text-slate-400 mt-1">Booked</span>
+                          ) : slot.status === 'filling-fast' ? (
+                            <span className={`block text-[8px] font-mono uppercase font-bold mt-1 ${isSelected ? 'text-yellow-300' : 'text-amber-600 animate-pulse'}`}>
+                              Hurry!
+                            </span>
+                          ) : (
+                            <span className={`block text-[8px] font-mono uppercase font-bold mt-1 ${isSelected ? 'text-emerald-200' : 'text-emerald-600'}`}>
+                              Available
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom precise time picker */}
+                <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-extrabold text-slate-950 uppercase tracking-wider block">Or Specify Custom Precise Time</span>
+                    <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">Anytime between 12:00 PM and 9:00 PM</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      type="time"
+                      min="12:00"
+                      max="21:00"
+                      value={
+                        state.partyTime 
+                          ? (() => {
+                              const matches = state.partyTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                              if (matches) {
+                                let hours = parseInt(matches[1]);
+                                const minutes = matches[2];
+                                const ampm = matches[3].toUpperCase();
+                                if (ampm === 'PM' && hours < 12) hours += 12;
+                                if (ampm === 'AM' && hours === 12) hours = 0;
+                                return `${String(hours).padStart(2, '0')}:${minutes}`;
+                              }
+                              return '';
+                            })()
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const timeVal = e.target.value;
+                        if (timeVal) {
+                          const [hoursStr, minutesStr] = timeVal.split(':');
+                          let hours = parseInt(hoursStr);
+                          const minutes = parseInt(minutesStr);
+                          
+                          // Validate bounds (12:00 to 21:00)
+                          if (hours < 12) {
+                            hours = 12;
+                          } else if (hours > 21 || (hours === 21 && minutes > 0)) {
+                            hours = 21;
+                          }
+                          
+                          const ampm = hours >= 12 ? 'PM' : 'AM';
+                          let displayHours = hours;
+                          if (displayHours > 12) displayHours -= 12;
+                          if (displayHours === 0) displayHours = 12;
+                          
+                          const finalMinutes = String(minutes).padStart(2, '0');
+                          const formattedTime = `${String(displayHours).padStart(2, '0')}:${finalMinutes} ${ampm}`;
+                          setState(prev => ({ ...prev, partyTime: formattedTime }));
+                        }
+                      }}
+                      className="px-3 py-2 border-2 border-slate-950 rounded-lg text-xs font-black text-slate-950 bg-white focus:outline-none focus:border-emerald-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    />
+                    
+                    {state.partyTime && (
+                      <div className="bg-emerald-50 text-emerald-800 border-2 border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider">
+                        Selected: {state.partyTime}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -606,58 +688,11 @@ ${state.parentName || 'Parent / Guardian'}`
           </div>
         </div>
 
-        {/* Step 5: Optional Upgrades */}
-        {FOOD_EXTRAS.length > 0 && (
-          <div className="bg-white rounded-3xl border-4 border-slate-950 p-6 space-y-5 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-400 text-slate-950 border-2 border-slate-950 font-black text-xs font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">5</span>
-              <h3 className="text-lg font-black text-slate-950 uppercase tracking-tight font-display">Optional Party Upgrades</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {FOOD_EXTRAS.map(extra => {
-                const isSelected = state.selectedExtras.includes(extra.id);
-                let rate = 0;
-                if (extra.id === 'extra-cupcake') rate = 1.50;
-                if (extra.id === 'extra-partybags') rate = 2.50;
-                if (extra.id === 'extra-sweets') rate = 2.00;
-
-                return (
-                  <button
-                    key={extra.id}
-                    type="button"
-                    onClick={() => handleExtraToggle(extra.id)}
-                    className={`p-4 rounded-2xl border-2 text-left flex flex-col justify-between transition-all h-36 ${
-                      isSelected
-                        ? 'border-slate-950 bg-emerald-50/50 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div>
-                      <span className="text-2xl block mb-1">{extra.emoji}</span>
-                      <span className="block text-xs font-black text-slate-950 leading-tight uppercase tracking-tight">{extra.name}</span>
-                      <span className="block text-[10px] text-slate-500 mt-1 leading-snug">{extra.description}</span>
-                    </div>
-                    <div className="mt-3 flex justify-between items-center w-full pt-2 border-t border-dashed border-slate-100">
-                      <span className="text-[11px] font-black text-slate-900">+£{rate.toFixed(2)} <span className="text-[9px] font-normal text-slate-500">/ kid</span></span>
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center text-[8px] font-black ${
-                        isSelected ? 'bg-emerald-600 border-slate-950 text-white' : 'border-slate-400 bg-white'
-                      }`}>
-                        {isSelected && '✓'}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5/6: Parent Contact Info */}
+        {/* Step 5: Parent Contact Info */}
         <div className="bg-white rounded-3xl border-4 border-slate-950 p-6 space-y-5 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]">
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-yellow-400 text-slate-950 border-2 border-slate-950 font-black text-xs font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-              {FOOD_EXTRAS.length > 0 ? '6' : '5'}
+              5
             </span>
             <h3 className="text-lg font-black text-slate-950 uppercase tracking-tight font-display">Parent / Guardian Contact</h3>
           </div>
@@ -703,19 +738,30 @@ ${state.parentName || 'Parent / Guardian'}`
         </div>
 
         {/* Submit Booking Action */}
-        <div className="bg-yellow-400 border-4 border-slate-950 rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className={`border-4 border-slate-950 rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${
+          selectedDayBlockedInfo ? 'bg-rose-100/80 border-rose-950' : 'bg-yellow-400'
+        }`}>
           <div className="space-y-1 text-left">
-            <h4 className="font-display font-black text-slate-950 text-base uppercase tracking-tight">Ready to send your request?</h4>
+            <h4 className="font-display font-black text-slate-950 text-base uppercase tracking-tight">
+              {selectedDayBlockedInfo ? 'Selected Date is Unavailable' : 'Ready to send your request?'}
+            </h4>
             <p className="text-xs text-slate-900 font-semibold leading-relaxed">
-              Ready to book a golf party for your kids? Just send us a request and we will get back to you!
+              {selectedDayBlockedInfo 
+                ? `${state.partyDate} is closed for bookings (${selectedDayBlockedInfo.reason}). Please select another date above.`
+                : 'Ready to book a golf party for your kids? Just send us a request and we will get back to you!'}
             </p>
           </div>
           <button
             id="btn-submit-booking-draft"
             type="submit"
-            className="w-full md:w-auto px-6 py-4 bg-slate-950 hover:bg-slate-900 text-white border-2 border-slate-950 font-display font-black text-xs uppercase tracking-wider rounded-xl shadow-[3px_3px_0px_0px_rgba(250,204,21,1)] transition-all inline-flex items-center justify-center gap-1.5 shrink-0"
+            disabled={!!selectedDayBlockedInfo}
+            className={`w-full md:w-auto px-6 py-4 border-2 font-display font-black text-xs uppercase tracking-wider rounded-xl transition-all inline-flex items-center justify-center gap-1.5 shrink-0 ${
+              selectedDayBlockedInfo 
+                ? 'bg-rose-950/70 text-rose-200 border-rose-950 cursor-not-allowed opacity-90'
+                : 'bg-slate-950 hover:bg-slate-900 text-white border-slate-950 shadow-[3px_3px_0px_0px_rgba(250,204,21,1)] cursor-pointer'
+            }`}
           >
-            📧 Send Booking Request
+            {selectedDayBlockedInfo ? '🚫 Date Unavailable — Select Another Day' : '📧 Send Booking Request'}
           </button>
         </div>
 

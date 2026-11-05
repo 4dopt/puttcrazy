@@ -13,7 +13,7 @@ export default function PrintPDFLayout() {
         <div className="my-2">
           <PlaygolfLogo className="h-12 w-auto" textColor="text-slate-900" />
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-emerald-950 uppercase">PUTT CRAZY</h1>
+        <h1 className="text-2xl font-black tracking-tight text-emerald-950">playgolf northwick park</h1>
         <div className="mt-2 bg-emerald-900 text-white font-bold text-xs px-4 py-1 inline-block rounded uppercase tracking-widest">
           KIDS PARTY MENU & PACKAGES
         </div>

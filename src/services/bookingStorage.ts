@@ -1,6 +1,6 @@
 import { BookingRecord, BookingStatus } from '../types';
 import { supabase } from './supabaseClient';
-import { FOOD_MAINS, FOOD_DRINKS } from '../data';
+import { FOOD_MAINS, FOOD_DRINKS, PARTY_PACKAGES, FOOD_EXTRAS } from '../data';
 
 const STORAGE_KEY = 'playgolf_party_bookings_v1';
 export const UPDATE_EVENT_NAME = 'playgolf_bookings_updated';
@@ -369,6 +369,115 @@ export async function updateBookingNotes(id: string, staffNotes: string): Promis
     console.error('Supabase error updating notes:', err);
     return false;
   }
+}
+
+// Calculate exact pricing for booking changes (package, kids, extras, manual override)
+export function calculatePricingForBooking(
+  packageId: string,
+  kidsCount: number,
+  selectedExtras: string[] = [],
+  manualOverridePrice?: number | null
+): {
+  packageName: string;
+  pricePerKid: number;
+  baseTotal: number;
+  extrasTotal: number;
+  extrasNames: string[];
+  discountAmount: number;
+  total: number;
+} {
+  const pkg = PARTY_PACKAGES.find(p => p.id === packageId) || PARTY_PACKAGES[0];
+  const pricePerKid = pkg.pricePerKid;
+  const count = Math.max(1, kidsCount);
+  const baseTotal = pricePerKid * count;
+
+  let extrasTotal = 0;
+  const extrasNames: string[] = [];
+
+  selectedExtras.forEach(extId => {
+    if (extId === 'extra-cupcake') {
+      extrasTotal += 1.50 * count;
+      extrasNames.push('Extra Themed Birthday Cupcake (£1.50/kid)');
+    } else if (extId === 'extra-partybags') {
+      extrasTotal += 2.50 * count;
+      extrasNames.push('Putt Crazy Souvenir Party Bag (£2.50/kid)');
+    } else if (extId === 'extra-sweets') {
+      extrasTotal += 2.00 * count;
+      extrasNames.push('Gourmet Sweet Cones (£2.00/kid)');
+    }
+  });
+
+  const discountAmount = pkg.id === 'combo-party' ? 11.50 * count : 0;
+  const computedTotal = baseTotal + extrasTotal;
+  const finalTotal = manualOverridePrice !== undefined && manualOverridePrice !== null && !isNaN(manualOverridePrice) && manualOverridePrice > 0
+    ? manualOverridePrice
+    : computedTotal;
+
+  return {
+    packageName: pkg.name,
+    pricePerKid,
+    baseTotal,
+    extrasTotal,
+    extrasNames,
+    discountAmount,
+    total: finalTotal
+  };
+}
+
+// Enable staff to update any details of a booking (deal, kids, dates, pricing, contact, etc.)
+export async function updateBookingDetails(
+  id: string,
+  updates: Partial<BookingRecord>
+): Promise<BookingRecord | null> {
+  const current = getAllBookings();
+  const idx = current.findIndex(b => b.id === id);
+  if (idx === -1) return null;
+
+  const existing = current[idx];
+  
+  // If package or kids count or extras changed without manual totals, recalculate pricing automatically
+  let calculatedPricing = {};
+  const newPackageId = updates.selectedPackageId || existing.selectedPackageId;
+  const newKidsCount = updates.kidsCount !== undefined ? updates.kidsCount : existing.kidsCount;
+  const newExtras = updates.selectedExtras || existing.selectedExtras || [];
+
+  if (
+    updates.total === undefined &&
+    (updates.selectedPackageId !== undefined || updates.kidsCount !== undefined || updates.selectedExtras !== undefined)
+  ) {
+    calculatedPricing = calculatePricingForBooking(newPackageId, newKidsCount, newExtras);
+  }
+
+  const updatedBooking: BookingRecord = {
+    ...existing,
+    ...calculatedPricing,
+    ...updates
+  };
+
+  current[idx] = updatedBooking;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(UPDATE_EVENT_NAME, { detail: updatedBooking }));
+  }
+
+  try {
+    const row = mapBookingToRow(updatedBooking);
+    const { error } = await supabase
+      .from('bookings')
+      .update(row)
+      .eq('id', id);
+
+    if (error) {
+      console.warn('Supabase error updating booking details:', error.message);
+    } else {
+      console.log('Successfully updated booking in Supabase:', id);
+    }
+  } catch (err) {
+    console.warn('Network issue reaching Supabase, local cache updated:', err);
+  }
+
+  return updatedBooking;
 }
 
 export async function deleteBooking(id: string): Promise<boolean> {

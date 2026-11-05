@@ -1,5 +1,6 @@
-import { PARTY_PACKAGES, FOOD_MAINS, FOOD_DRINKS, FOOD_EXTRAS } from '../data';
-import { Target, Flag, ArrowRight, CheckCircle2, ChevronRight, Gift, Percent, UtensilsCrossed, Star } from 'lucide-react';
+import { useState } from 'react';
+import { PARTY_PACKAGES, FOOD_MAINS, FOOD_DRINKS } from '../data';
+import { Target, Flag, ArrowRight, CheckCircle2, ChevronRight, Percent, UtensilsCrossed, Star, Share2, Copy, Check, Mail, MessageCircle, ChevronDown } from 'lucide-react';
 
 interface BrochureViewProps {
   onSelectPackage: (packageId: string) => void;
@@ -10,16 +11,215 @@ export default function BrochureView({ onSelectPackage }: BrochureViewProps) {
   const adventureGolf = PARTY_PACKAGES.find(p => p.id === 'adventure-golf');
   const comboDeal = PARTY_PACKAGES.find(p => p.id === 'combo-party');
 
+  const [copyStatus, setCopyStatus] = useState<'copied' | 'shared' | null>(null);
+  const [showShareOptions, setShowShareOptions] = useState(false);
+
+  const getShareUrl = () => {
+    return typeof window !== 'undefined' ? window.location.href : 'https://playgolf.co.uk';
+  };
+
+  const copyUrlToClipboard = async () => {
+    const url = getShareUrl();
+    let copied = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+        copied = true;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    if (!copied) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textArea);
+      } catch (err) {
+        console.error('Failed to copy', err);
+      }
+    }
+
+    if (copied) {
+      setCopyStatus('copied');
+      setTimeout(() => setCopyStatus(null), 3000);
+    }
+    return copied;
+  };
+
+  const handleShare = async () => {
+    const url = getShareUrl();
+    const shareData = {
+      title: 'playgolf northwick park - Kids Birthday Parties',
+      text: 'Check out the kids party packages, Putt Crazy adventure golf & driving range parties at Playgolf Northwick Park!',
+      url: url,
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        setCopyStatus('shared');
+        setTimeout(() => setCopyStatus(null), 3000);
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          return; // User dismissed share sheet
+        }
+      }
+    }
+
+    // Fallback: copy link to clipboard and show toast
+    const success = await copyUrlToClipboard();
+    if (!success) {
+      setShowShareOptions(true);
+    }
+  };
+
+  const shareText = encodeURIComponent('Check out the kids birthday party packages at Playgolf Northwick Park:');
+  const shareTitle = encodeURIComponent('Playgolf Northwick Park - Kids Birthday Parties');
+  const encodedUrl = encodeURIComponent(getShareUrl());
+
+  const socialLinks = {
+    whatsapp: `https://api.whatsapp.com/send?text=${shareText}%20${encodedUrl}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    x: `https://twitter.com/intent/tweet?text=${shareText}&url=${encodedUrl}`,
+    email: `mailto:?subject=${shareTitle}&body=${shareText}%0A%0A${encodedUrl}`,
+  };
+
   return (
     <div className="space-y-12">
       {/* Intro section */}
-      <div className="text-center max-w-xl mx-auto space-y-3">
+      <div className="text-center max-w-xl mx-auto space-y-3.5">
         <h2 className="text-3xl md:text-4xl font-black font-display text-slate-950 tracking-tight uppercase">
           Kids Party Packages
         </h2>
         <p className="text-slate-600 text-sm font-medium">
           Choose between unlimited range bays, an incredible 18-hole adventure golf quest, or our best-value Ultimate Combo deals.
         </p>
+
+        {/* Social Media Share Component */}
+        <div className="pt-2 flex flex-col items-center relative">
+          <div className="inline-flex items-center gap-2 flex-wrap justify-center">
+            {/* Primary Share Button */}
+            <button
+              id="btn-share-brochure"
+              onClick={handleShare}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-display font-black text-xs uppercase tracking-wider transition-all duration-200 border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
+                copyStatus
+                  ? 'bg-emerald-500 text-white border-emerald-900'
+                  : 'bg-white hover:bg-slate-50 text-slate-900'
+              }`}
+              title="Share brochure via native share or copy link"
+            >
+              {copyStatus === 'copied' ? (
+                <>
+                  <Check className="w-4 h-4 text-white" />
+                  <span>Link Copied!</span>
+                </>
+              ) : copyStatus === 'shared' ? (
+                <>
+                  <Check className="w-4 h-4 text-white" />
+                  <span>Shared!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4 text-emerald-700" />
+                  <span>Share Brochure</span>
+                </>
+              )}
+            </button>
+
+            {/* Quick Share Options Toggle */}
+            <button
+              id="btn-toggle-share-options"
+              onClick={() => setShowShareOptions(prev => !prev)}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-display font-bold text-xs uppercase tracking-wider border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-all cursor-pointer"
+              title="More social sharing options"
+              aria-label="Toggle social sharing channels"
+            >
+              <span>Socials</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showShareOptions ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          {/* Toast / Status Notification */}
+          {copyStatus === 'copied' && (
+            <div className="mt-2.5 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3.5 py-1 rounded-full animate-fade-in flex items-center gap-1.5 shadow-sm">
+              <Check className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Party link copied to your clipboard! Ready to paste and share.</span>
+            </div>
+          )}
+
+          {/* Dropdown / Popover for Social Media channels */}
+          {showShareOptions && (
+            <div className="mt-3 p-3 bg-white border-2 border-slate-950 rounded-2xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] flex items-center gap-2 flex-wrap justify-center z-10 animate-fade-in">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 font-mono mr-1">Share via:</span>
+
+              {/* WhatsApp */}
+              <a
+                href={socialLinks.whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-transform hover:scale-105"
+                title="Share on WhatsApp"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </a>
+
+              {/* Facebook */}
+              <a
+                href={socialLinks.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-transform hover:scale-105"
+                title="Share on Facebook"
+              >
+                <span className="font-serif font-black text-xs leading-none">f</span>
+                <span>Facebook</span>
+              </a>
+
+              {/* X / Twitter */}
+              <a
+                href={socialLinks.x}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-black text-white text-xs font-bold transition-transform hover:scale-105"
+                title="Share on X"
+              >
+                <span className="font-black text-[11px] leading-none">𝕏</span>
+                <span>Post</span>
+              </a>
+
+              {/* Email */}
+              <a
+                href={socialLinks.email}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-transform hover:scale-105"
+                title="Share via Email"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Email</span>
+              </a>
+
+              {/* Copy URL Direct */}
+              <button
+                onClick={copyUrlToClipboard}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-transform hover:scale-105 cursor-pointer"
+                title="Copy link to clipboard"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Link</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Grid of Packages */}
@@ -201,6 +401,50 @@ export default function BrochureView({ onSelectPackage }: BrochureViewProps) {
           </div>
         )}
 
+        {/* Social Media Sharing Banner for Parents */}
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border-3 border-slate-950 rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1.5 text-center md:text-left">
+            <div className="inline-flex items-center gap-1.5 text-emerald-800 font-black text-[11px] uppercase tracking-wider font-mono">
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share Packages with Family & Friends</span>
+            </div>
+            <h4 className="text-xl md:text-2xl font-black font-display text-slate-950 uppercase tracking-tight">
+              Organising with Other Parents?
+            </h4>
+            <p className="text-xs md:text-sm text-slate-600 max-w-lg font-medium leading-relaxed">
+              Share this brochure directly to your school WhatsApp group, family chat, or social feed so parents can pick packages and vote on party dates!
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap justify-center shrink-0">
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-2 bg-slate-950 hover:bg-slate-900 text-white font-display font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(250,204,21,1)] transition-transform active:scale-95 cursor-pointer"
+            >
+              {copyStatus ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-yellow-300" />}
+              <span>{copyStatus ? 'Link Copied!' : 'Share Brochure'}</span>
+            </button>
+            <a
+              href={socialLinks.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-display font-black text-xs uppercase tracking-wider px-4 py-3 rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-transform active:scale-95"
+              title="Share directly via WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>WhatsApp</span>
+            </a>
+            <button
+              onClick={copyUrlToClipboard}
+              className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-900 font-display font-black text-xs uppercase tracking-wider px-4 py-3 rounded-xl border-2 border-slate-950 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-transform active:scale-95 cursor-pointer"
+              title="Copy party brochure URL"
+            >
+              <Copy className="w-4 h-4 text-slate-600" />
+              <span>Copy Link</span>
+            </button>
+          </div>
+        </div>
+
         {/* Catering visual grid */}
         <div className="bg-white rounded-3xl border-4 border-slate-950 p-6 md:p-8 space-y-8 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-slate-200 pb-5">
@@ -266,27 +510,6 @@ export default function BrochureView({ onSelectPackage }: BrochureViewProps) {
                   ))}
                 </div>
               </div>
-
-              {/* Extra sweet upgrade */}
-              {FOOD_EXTRAS.length > 0 && (
-                <div className="bg-yellow-50 border-2 border-dashed border-yellow-400 rounded-2xl p-5 space-y-4">
-                  <h5 className="text-xs font-black text-slate-900 tracking-wider uppercase flex items-center gap-1.5">
-                    <Gift className="w-4 h-4 text-amber-600 animate-bounce" />
-                    OPTIONAL PARTY UPGRADES (Available on request)
-                  </h5>
-                  <div className="space-y-3">
-                    {FOOD_EXTRAS.map(ext => (
-                      <div key={ext.id} className="flex justify-between items-start gap-4 pb-2 border-b border-yellow-200/55 last:border-0 last:pb-0">
-                        <div className="text-xs">
-                          <span className="font-extrabold text-slate-900">{ext.emoji} {ext.name}</span>
-                          <p className="text-[10px] text-slate-600 mt-0.5 leading-relaxed">{ext.description}</p>
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 shrink-0">Add-on</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
           </div>

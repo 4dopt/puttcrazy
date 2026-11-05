@@ -128,7 +128,33 @@ export const FOOD_DRINKS: FoodOption[] = [
   }
 ];
 
-export const FOOD_EXTRAS: FoodOption[] = [];
+export const FOOD_EXTRAS: FoodOption[] = [
+  {
+    id: 'extra-cupcake',
+    name: 'Extra Themed Birthday Cupcake',
+    type: 'extra',
+    description: 'Freshly baked individual party cupcake for each child (+£1.50/kid)',
+    isAllergenFriendly: false,
+    allergens: ['Gluten', 'Dairy', 'Eggs'],
+    emoji: '🧁'
+  },
+  {
+    id: 'extra-partybags',
+    name: 'Putt Crazy Souvenir Party Bag',
+    type: 'extra',
+    description: 'Souvenir bag with stickers, mini golf toy, and treats (+£2.50/kid)',
+    isAllergenFriendly: true,
+    emoji: '🎁'
+  },
+  {
+    id: 'extra-sweets',
+    name: 'Gourmet Sweet Cones',
+    type: 'extra',
+    description: 'Assorted candy cone tied with ribbon (+£2.00/kid)',
+    isAllergenFriendly: true,
+    emoji: '🍬'
+  }
+];
 
 // Helper to generate dynamic days with realistic timeslots
 export function getMockAvailability(): DayAvailability[] {
@@ -145,6 +171,10 @@ export function getMockAvailability(): DayAvailability[] {
     
     const dayOfWeek = dayNames[targetDate.getDay()];
     const dateStr = `${dayOfWeek}, ${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`;
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    const isoDate = `${year}-${month}-${day}`;
     const isWeekend = targetDate.getDay() === 0 || targetDate.getDay() === 6;
     
     // Setup time slots from 12:00 PM to 09:00 PM
@@ -164,9 +194,28 @@ export function getMockAvailability(): DayAvailability[] {
     
     days.push({
       date: dateStr,
+      isoDate: isoDate,
       slots: slots
     });
   }
   
   return days;
+}
+
+// Convert standard YYYY-MM-DD (e.g. from <input type="date">) to human-readable format like "Saturday, 14 Nov"
+export function formatIsoToPartyDate(isoString: string): string {
+  if (!isoString) return '';
+  const parts = isoString.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m, d);
+    if (!isNaN(dateObj.getTime())) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${dayNames[dateObj.getDay()]}, ${dateObj.getDate()} ${monthNames[dateObj.getMonth()]}`;
+    }
+  }
+  return isoString;
 }

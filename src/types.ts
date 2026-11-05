@@ -30,6 +30,7 @@ export interface BirthdaySlot {
 
 export interface DayAvailability {
   date: string; // ISO date string or human date e.g. "Saturday, July 4"
+  isoDate?: string; // Standard format YYYY-MM-DD
   slots: BirthdaySlot[];
 }
 
@@ -79,3 +80,12 @@ export interface BookingRecord {
   source: 'web_form' | 'phone_inquiry' | 'manual';
 }
 
+export interface BlockedDateRecord {
+  id: string; // e.g. "BLK-101"
+  date: string; // formatted string e.g. "Saturday, 28 Nov"
+  isoDate: string; // YYYY-MM-DD for standard date picking & sorting
+  reason: string; // e.g. "Private Club Tournament", "Course Maintenance"
+  createdAt: string; // ISO date string
+  createdBy?: string;
+  notes?: string;
+}
